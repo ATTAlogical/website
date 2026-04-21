@@ -138,3 +138,27 @@ body::after {
     background-clip: text;
   }
 }
+
+/* Chip SVG blooms outward from center */
+@keyframes chipSvgReveal {
+  from {
+    opacity: 0;
+    clip-path: ellipse(0% 0% at 50% 50%);
+  }
+  to {
+    opacity: 0.22;
+    clip-path: ellipse(90% 72% at 50% 50%);
+  }
+}
+
+/* Chip text drifts up and fades in */
+@keyframes chipTextReveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
