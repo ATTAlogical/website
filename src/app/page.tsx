@@ -3,13 +3,68 @@
 import { useTemporalEvolution } from "@/hooks/useTemporalEvolution";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-const PLACEHOLDER = "what are you looking for?";
+const PLACEHOLDERS = {
+  en: "what are you looking for?",
+  nl: "wat zoek je?",
+};
+
+const CONTENT = {
+  en: {
+    work: "Work Experience",
+    contact: "Contact",
+    projects: "Projects",
+    contactHeading: "Get in touch",
+    projectsPlaceholder: "Projects coming soon.",
+    jobs: [
+      {
+        role: "Fullstack Developer Intern",
+        company: "Stichting Asha",
+        city: "[city]",
+        period: "Feb 2025 – present",
+        description: "Designed and built an internal laptop management system (AshaOS) to manage the organisation's complete laptop fleet.",
+        bullets: [
+          "Fullstack web app: Next.js, Node.js, GraphQL and PostgreSQL in a Turborepo monorepo",
+          "Features: laptop status management, reservation system, bulk actions, software requests with licence control, helpdesk module for client intake",
+          "Integrated AI assistant (Groq API) for contextual helpdesk support",
+          "Independently designed database schema (Prisma ORM), API layer and UI",
+          "Deployed via Railway (PostgreSQL) and Vercel",
+        ],
+      },
+    ],
+  },
+  nl: {
+    work: "Werkervaring",
+    contact: "Contact",
+    projects: "Projecten",
+    contactHeading: "Neem contact op",
+    projectsPlaceholder: "Projecten volgen binnenkort.",
+    jobs: [
+      {
+        role: "Stagiair Fullstack Developer",
+        company: "Stichting Asha",
+        city: "[stad]",
+        period: "feb 2025 – heden",
+        description: "Ontworpen en gebouwd van een intern laptopbeheersysteem (AshaOS) voor het beheren van het volledige laptoppark van de stichting.",
+        bullets: [
+          "Fullstack webapplicatie: Next.js, Node.js, GraphQL en PostgreSQL in een Turborepo monorepo",
+          "Functionaliteiten: laptopstatusbeheer, reserveringssysteem, bulkacties, softwareaanvragen met licentiecontrole en helpdeskmodule voor klantinname",
+          "Geïntegreerde AI-assistent (Groq API) voor contextuele helpdesksupport",
+          "Zelfstandig ontworpen database schema (Prisma ORM), API-laag en gebruikersinterface",
+          "Applicatie live gedraaid via Railway (PostgreSQL) en Vercel",
+        ],
+      },
+    ],
+  },
+};
+
+const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
+const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
 
 const CATEGORIES = [
-  { label: "Laugical", keywords: ["art", "laugical", "design", "visual", "creative", "gallery", "illustration", "graphic", "draw", "paint", "aesthetic"] },
-  { label: "CKORE",    keywords: ["music", "ckore", "track", "audio", "sound", "beat", "song", "release", "listen"] },
-  { label: "logic",    keywords: ["logic", "logical", "website", "web", "work", "business", "portfolio", "project", "cv", "resume", "code", "dev", "build"] },
-  { label: "Contact",  keywords: ["contact", "email", "reach", "hire", "talk", "hello", "touch", "call"] },
+  { label: "Laugical", keywords: ["art", "laugical", "design", "visual", "creative", "gallery", "illustration", "graphic", "draw", "paint", "aesthetic", "kunst", "ontwerp", "creatief", "visueel", "tekenen", "schilderen"] },
+  { label: "CKORE",    keywords: ["music", "ckore", "track", "audio", "sound", "beat", "song", "release", "listen", "muziek", "nummer", "geluid", "luisteren", "release"] },
+  { label: "logic",    keywords: ["logic", "logical", "website", "web", "work", "business", "portfolio", "project", "cv", "resume", "code", "dev", "build", "werk", "bouwen", "programmeren", "ontwikkelen", "bedrijf", "zakelijk"] },
+  { label: "Contact",  keywords: ["contact", "email", "reach", "hire", "talk", "hello", "touch", "call", "bereiken", "inhuren", "bellen", "hallo", "hoi", "samenwerken"] },
 ];
 
 function matchLabels(query: string): string[] {
@@ -162,9 +217,13 @@ export default function Home() {
   const [insideGlass, setInsideGlass] = useState<Record<string, boolean>>({});
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [contactClicks, setContactClicks] = useState(0);
+  const [lang, setLang] = useState<"en" | "nl">("en");
+  const [showExtended, setShowExtended] = useState(false);
+  const [scrollToContact, setScrollToContact] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
+  const contactSectionRef = useRef<HTMLElement>(null);
   const glassRectRef = useRef<DOMRect | null>(null);
   const chipsRef = useRef<Chip[]>([]);
   const physicsRef = useRef<Record<string, ChipPhysics>>({});
@@ -173,7 +232,33 @@ export default function Home() {
 
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
+    if (label === "logic") setShowExtended(true);
   }, []);
+
+  const goToContact = useCallback(() => {
+    setShowExtended(true);
+    setScrollToContact(true);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = showExtended ? "auto" : "";
+    document.documentElement.style.overflow = showExtended ? "auto" : "";
+    document.body.style.height = showExtended ? "auto" : "";
+    document.documentElement.style.height = showExtended ? "auto" : "";
+  }, [showExtended]);
+
+  useEffect(() => {
+    if (!scrollToContact || !showExtended) return;
+    const t = setTimeout(() => {
+      contactSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      setScrollToContact(false);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [scrollToContact, showExtended]);
+
+  useEffect(() => {
+    if (contactClicks >= 3) goToContact();
+  }, [contactClicks, goToContact]);
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
   useEffect(() => { setMounted(true); }, []);
@@ -198,17 +283,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!showSearch) return;
+    const ph = PLACEHOLDERS[lang];
     let i = 0;
+    setTypedPlaceholder("");
     const start = setTimeout(() => {
       const iv = setInterval(() => {
         i++;
-        setTypedPlaceholder(PLACEHOLDER.slice(0, i));
-        if (i >= PLACEHOLDER.length) clearInterval(iv);
+        setTypedPlaceholder(ph.slice(0, i));
+        if (i >= ph.length) clearInterval(iv);
       }, 55);
       return () => clearInterval(iv);
-    }, 600);
+    }, showSearch ? 600 : 0);
     return () => clearTimeout(start);
-  }, [showSearch]);
+  }, [showSearch, lang]);
 
   // rAF physics loop
   useEffect(() => {
@@ -358,8 +445,12 @@ export default function Home() {
 
   const placeholderVisible = !isFocused && searchValue === "";
 
+  const c = CONTENT[lang];
+
   return (
-    <main className="relative w-full h-full overflow-hidden bg-white">
+    <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflow: showExtended ? "visible" : "hidden" }}>
+      {/* ── HERO ── */}
+      <div className="relative w-full overflow-hidden" style={{ height: "100svh" }}>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none opacity-30" />
 
@@ -417,27 +508,47 @@ export default function Home() {
         </div>
 
         {/* Contact email surface */}
-        <a
-          href="mailto:Boelie@attalogical.com"
-          className="absolute glossy-text"
+        <div
+          className="absolute"
           style={{
             bottom: "21%",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 12,
-            display: "block",
-            paddingBottom: 0,
-            fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)",
-            letterSpacing: "0.1em",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
+            textAlign: "center",
             opacity: contactClicks > 0 ? 1 : 0,
             transition: "opacity 1s ease-in-out",
             pointerEvents: contactClicks > 0 ? "auto" : "none",
           }}
         >
-          Boelie@attalogical.com
-        </a>
+          <a
+            href="mailto:Boelie@attalogical.com"
+            className="glossy-text"
+            style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none", whiteSpace: "nowrap" }}
+          >
+            Boelie@attalogical.com
+          </a>
+          <button
+            onClick={goToContact}
+            style={{
+              marginTop: "0.6em",
+              background: "none",
+              border: "none",
+              fontFamily: '"Playfair Display", serif',
+              fontSize: "clamp(0.6rem, 0.9vw, 0.75rem)",
+              letterSpacing: "0.12em",
+              color: "rgba(0,0,0,0.35)",
+              cursor: "pointer",
+              padding: 0,
+              opacity: contactClicks > 0 ? 1 : 0,
+              transition: "color 0.3s ease",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.35)")}
+          >
+            more →
+          </button>
+        </div>
 
         <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full pointer-events-none"
           style={{
@@ -502,7 +613,13 @@ export default function Home() {
             type="text"
             value={searchValue}
             onChange={e => setSearchValue(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") setSubmittedQuery(searchValue); }}
+            onKeyDown={e => {
+              if (e.key !== "Enter") return;
+              const q = searchValue.trim();
+              if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
+              if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
+              setSubmittedQuery(searchValue);
+            }}
             onFocus={() => { setShowSearch(true); setIsFocused(true); }}
             onBlur={() => setIsFocused(false)}
             style={{
@@ -526,6 +643,80 @@ export default function Home() {
       <div className="lg:hidden absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="absolute inset-0 bg-white/40" />
       </div>
+      </div>{/* end hero */}
+
+      {/* ── EXTENDED SECTIONS ── */}
+      {showExtended && (
+        <div style={{ background: "white", fontFamily: '"Playfair Display", serif' }}>
+
+          {/* Work Experience */}
+          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {c.work}
+            </h2>
+            {c.jobs.map((job, i) => (
+              <div key={i} style={{ maxWidth: "640px" }}>
+                <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "0.25em" }}>
+                  {job.role}
+                </p>
+                <p style={{ fontSize: "clamp(0.7rem, 1vw, 0.85rem)", color: "rgba(0,0,0,0.4)", letterSpacing: "0.08em", marginBottom: "1.5rem" }}>
+                  {job.company} — {job.city} &nbsp;|&nbsp; {job.period}
+                </p>
+                <p style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.65)", lineHeight: 1.8, marginBottom: "1.25rem" }}>
+                  {job.description}
+                </p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {job.bullets.map((b, j) => (
+                    <li key={j} style={{ fontSize: "clamp(0.75rem, 1vw, 0.88rem)", color: "rgba(0,0,0,0.5)", lineHeight: 1.9, paddingLeft: "1.2em", position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: "rgba(0,0,0,0.2)" }}>—</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </section>
+
+          {/* Contact */}
+          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {c.contact}
+            </h2>
+            <div style={{ maxWidth: "640px" }}>
+              <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem" }}>
+                Boelie van Camp
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+                {[
+                  { label: "email", href: "mailto:Boelie@attalogical.com", text: "Boelie@attalogical.com" },
+                  { label: "instagram", href: "https://www.instagram.com/boelie36/", text: "@boelie36" },
+                  { label: "github", href: "https://github.com/ATTAlogical", text: "ATTAlogical" },
+                ].map(({ label, href, text }) => (
+                  <div key={label} style={{ display: "flex", gap: "2rem", alignItems: "baseline" }}>
+                    <span style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.3)", width: "5rem", textTransform: "uppercase", flexShrink: 0 }}>{label}</span>
+                    <a href={href} target={label !== "email" ? "_blank" : undefined} rel="noreferrer"
+                      style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "#000")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
+                    >{text}</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Projects */}
+          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {c.projects}
+            </h2>
+            <p style={{ maxWidth: "640px", fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.35)", letterSpacing: "0.04em" }}>
+              {c.projectsPlaceholder}
+            </p>
+          </section>
+
+        </div>
+      )}
     </main>
   );
 }
