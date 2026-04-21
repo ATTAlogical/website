@@ -6,6 +6,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
+  useMotionValue,
   useMotionValueEvent,
   useScroll,
   useTransform,
@@ -23,6 +24,8 @@ const ProjectSection = memo(function ProjectSection({
   const rowRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragLeft, setDragLeft] = useState(0);
+  // Shared x value — drives both the main row and the reflection in sync
+  const dragX = useMotionValue(0);
 
   // Header slides up + fades as section enters the viewport
   const { scrollYProgress: entranceP } = useScroll({
@@ -88,6 +91,7 @@ const ProjectSection = memo(function ProjectSection({
           dragElastic={0.05}
           dragMomentum
           style={{
+            x: dragX,
             display: "inline-flex",
             gap: "1.25rem",
             paddingLeft: "8vw",
@@ -139,6 +143,66 @@ const ProjectSection = memo(function ProjectSection({
               </div>
             )}
         </motion.div>
+
+        {/* Floor reflection — same images, scaleY(-1), clipped + faded with mask */}
+        <div
+          style={{
+            overflow: "hidden",
+            height: "22vh",
+            marginTop: "3px",
+            pointerEvents: "none",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.14) 55%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.14) 55%, transparent 100%)",
+          }}
+        >
+          <motion.div
+            style={{
+              x: dragX,
+              scaleY: -1,
+              transformOrigin: "top",
+              display: "inline-flex",
+              gap: "1.25rem",
+              paddingLeft: "8vw",
+              paddingRight: "8vw",
+              minWidth: "100%",
+              willChange: "transform",
+            }}
+          >
+            {hasImages
+              ? allImages.map((src, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flexShrink: 0,
+                      width: "clamp(340px, 52vw, 820px)",
+                      height: "64vh",
+                      borderRadius: "20px",
+                      overflow: "hidden",
+                      background: "#e0e0e2",
+                    }}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      aria-hidden="true"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      draggable={false}
+                    />
+                  </div>
+                ))
+              : (
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: "clamp(340px, 52vw, 820px)",
+                    height: "64vh",
+                    borderRadius: "20px",
+                    background: "linear-gradient(135deg, #f0f0f0, #e6e6e8)",
+                  }}
+                />
+              )}
+          </motion.div>
+        </div>
       </div>
     </section>
   );
