@@ -34,7 +34,6 @@ body {
   );
   color: var(--foreground);
   font-family: var(--font-geist-sans);
-  backdrop-filter: blur(0.5px);
   position: relative;
 }
 
@@ -102,19 +101,6 @@ body::after {
   display: block;
 }
 
-/* Smooth transitions for temporal changes */
-.temporal-text {
-  transition: letter-spacing 1s ease-in-out,
-              font-weight 1s ease-in-out,
-              transform 2s ease-in-out;
-  will-change: transform, letter-spacing, font-weight;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .temporal-text {
-    transition: none;
-  }
-}
 
 /* Glass background container */
 .glass-container {

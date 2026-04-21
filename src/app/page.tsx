@@ -1,6 +1,6 @@
 "use client";
 
-import { useTemporalEvolution, teAngleNow, HOURS24, TE_SPEED } from "@/hooks/useTemporalEvolution";
+import { useTemporalEvolution, teAngleNow, TE_SPEED } from "@/hooks/useTemporalEvolution";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 const PLACEHOLDERS = {
@@ -336,6 +336,13 @@ export default function Home() {
   const chipsRef = useRef<Chip[]>([]);
   const chipElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const rafRef = useRef<number>(0);
+  const titleContainerRef = useRef<HTMLDivElement>(null);
+  const h1Ref = useRef<HTMLHeadingElement>(null);
+  const reflectionRef = useRef<HTMLDivElement>(null);
+  const contactHeadingWrapRef = useRef<HTMLDivElement>(null);
+  const contactLinksTeRef = useRef<HTMLDivElement>(null);
+  const bioTeRef = useRef<HTMLDivElement>(null);
+  const projectsSectionTeRef = useRef<HTMLElement>(null);
 
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
@@ -414,19 +421,62 @@ export default function Home() {
     return () => clearTimeout(start);
   }, [showSearch, lang]);
 
-  // TE-driven chip positions — same cycle as the title drift
+  // Single rAF loop: TE DOM updates + chip positions.
+  // Frame throttle: at TE_SPEED=1 values change ~0.00001px/frame — 2fps is imperceptible.
   useEffect(() => {
+    let frame = 0;
+    const SKIP = TE_SPEED <= 1 ? 30 : 1;
+    const PI = Math.PI;
+
     const tick = () => {
+      rafRef.current = requestAnimationFrame(tick);
+      if (++frame % SKIP !== 0) return;
+
       const W = window.innerWidth;
       const H = window.innerHeight;
       const angle = teAngleNow();
+      const s = Math.sin;
+      const co = Math.cos;
+
+      // TE: title container transform
+      if (titleContainerRef.current) {
+        titleContainerRef.current.style.transform = `translate(${s(angle) * 40}px, ${co(angle) * 28}px) scale(${1 + s(angle) * 0.06})`;
+      }
+      // TE: title text letterSpacing + fontWeight
+      if (h1Ref.current) {
+        h1Ref.current.style.letterSpacing = `${s(angle) * 0.02 + 0.02}em`;
+        h1Ref.current.style.fontWeight = String(400 + s(angle) * 40 + 40);
+      }
+      // TE: reflection (fontWeight + letterSpacing only — transform is static scaleY)
+      if (reflectionRef.current) {
+        reflectionRef.current.style.letterSpacing = `${s(angle) * 0.02 + 0.02}em`;
+        reflectionRef.current.style.fontWeight = String(400 + s(angle) * 40 + 40);
+      }
+      // TE: extended sections
+      if (workSectionRef.current) {
+        workSectionRef.current.style.transform = `translate(${s(angle) * 55}px, ${co(angle + 0.6) * 35}px)`;
+      }
+      if (contactHeadingWrapRef.current) {
+        contactHeadingWrapRef.current.style.transform = `translate(${s(angle + PI * 0.75) * 44}px, ${co(angle + PI * 0.6) * 28}px)`;
+      }
+      if (contactLinksTeRef.current) {
+        contactLinksTeRef.current.style.transform = `translate(${s(angle + PI * 0.5) * 48}px, ${co(angle + PI * 0.4) * 30}px)`;
+      }
+      if (bioTeRef.current) {
+        bioTeRef.current.style.transform = `translate(${s(angle + PI) * 52}px, ${co(angle + PI * 0.9) * 38}px)`;
+      }
+      if (projectsSectionTeRef.current) {
+        projectsSectionTeRef.current.style.transform = `translate(${s(angle + PI * 1.5) * 60}px, ${co(angle + PI * 1.3) * 40}px)`;
+      }
+
+      // Chips
       chipsRef.current.filter(c => c.state === "visible").forEach(chip => {
         const pos = getChipPosition(chip.label, angle, W, H, glassRectRef.current);
         const el = chipElsRef.current.get(chip.id);
         if (el) el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
       });
-      rafRef.current = requestAnimationFrame(tick);
     };
+
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
@@ -504,21 +554,21 @@ export default function Home() {
             className="absolute w-3/4 h-3/4 max-w-4xl rounded-2xl"
             style={{
               background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
-              backdropFilter: "blur(8px)",
               border: "1px solid rgba(0,0,0,0.08)",
               opacity: 0.4,
             }}
           />
 
           <div
+            ref={titleContainerRef}
             className="relative z-10 flex flex-col items-center justify-center text-center"
             style={{
               transform: `translate(${temporal.offsetX}px, ${temporal.offsetY}px) scale(${temporal.scale})`,
-              transition: "transform 1.5s ease-in-out",
             }}
           >
             <h1
-              className="temporal-text glossy-text-shadow"
+              ref={h1Ref}
+              className="glossy-text-shadow"
               style={{
                 fontSize: "clamp(2rem, 8vw, 6rem)",
                 letterSpacing: `${temporal.letterSpacing}em`,
@@ -532,6 +582,7 @@ export default function Home() {
             </h1>
 
             <div
+              ref={reflectionRef}
               className="pointer-events-none"
               style={{
                 marginTop: "-0.1em",
@@ -591,10 +642,10 @@ export default function Home() {
           </div>
 
           <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.08), transparent)", filter: "blur(40px)", opacity: 0.3 }}
+            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 70%)", opacity: 0.3 }}
           />
           <div className="absolute bottom-1/3 -left-1/3 w-96 h-96 rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.05), transparent)", filter: "blur(50px)", opacity: 0.2 }}
+            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.04) 0%, transparent 70%)", opacity: 0.2 }}
           />
         </div>
 
@@ -679,7 +730,7 @@ export default function Home() {
         <div style={{ background: "white", fontFamily: '"Playfair Display", serif', overflowX: "hidden" }}>
 
           {/* Work Experience */}
-          <section ref={workSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transform: `translate(${Math.sin(temporal.angle) * 55}px, ${Math.cos(temporal.angle + 0.6) * 35}px)`, transition: "transform 1.5s ease-in-out" }}>
+          <section ref={workSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
               {c.work}
             </h2>
@@ -707,8 +758,8 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transition: "transform 1.5s ease-in-out" }}>
-            <div style={{ transform: `translate(${Math.sin(temporal.angle + Math.PI * 0.75) * 44}px, ${Math.cos(temporal.angle + Math.PI * 0.6) * 28}px)`, transition: "transform 1.5s ease-in-out", marginBottom: "4rem" }}>
+          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <div ref={contactHeadingWrapRef} style={{ marginBottom: "4rem" }}>
               <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
                 {c.contact}
               </h2>
@@ -716,7 +767,7 @@ export default function Home() {
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start" }}>
 
               {/* Left — contact links */}
-              <div style={{ minWidth: "220px", transform: `translate(${Math.sin(temporal.angle + Math.PI * 0.5) * 48}px, ${Math.cos(temporal.angle + Math.PI * 0.4) * 30}px)`, transition: "transform 1.5s ease-in-out" }}>
+              <div ref={contactLinksTeRef} style={{ minWidth: "220px" }}>
                 <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem" }}>
                   Boelie van Camp
                 </p>
@@ -739,7 +790,7 @@ export default function Home() {
               </div>
 
               {/* Right — bio */}
-              <div style={{ maxWidth: "380px", transform: `translate(${Math.sin(temporal.angle + Math.PI) * 52}px, ${Math.cos(temporal.angle + Math.PI * 0.9) * 38}px)`, transition: "transform 1.5s ease-in-out" }}>
+              <div ref={bioTeRef} style={{ maxWidth: "380px" }}>
                 <p style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.6)", lineHeight: 1.9, marginBottom: "2rem", letterSpacing: "0.02em" }}>
                   {c.bio}
                 </p>
@@ -752,7 +803,7 @@ export default function Home() {
           </section>
 
           {/* Projects */}
-          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transform: `translate(${Math.sin(temporal.angle + Math.PI * 1.5) * 60}px, ${Math.cos(temporal.angle + Math.PI * 1.3) * 40}px)`, transition: "transform 1.5s ease-in-out" }}>
+          <section ref={projectsSectionTeRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
               {c.projects}
             </h2>

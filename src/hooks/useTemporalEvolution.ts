@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 
 interface TemporalValues {
   offsetX: number;
@@ -19,36 +19,20 @@ export function teAngleNow(): number {
   return ((Date.now() * TE_SPEED) % HOURS24) / HOURS24 * 2 * Math.PI;
 }
 
+export function teValuesAt(angle: number): TemporalValues {
+  return {
+    angle,
+    offsetX: Math.sin(angle) * 40,
+    offsetY: Math.cos(angle) * 28,
+    letterSpacing: Math.sin(angle) * 0.02 + 0.02,
+    fontWeight: 400 + Math.sin(angle) * 40 + 40,
+    scale: 1 + Math.sin(angle) * 0.06,
+    reflectionIntensity: 0.5 + Math.sin(angle) * 0.2,
+  };
+}
+
+// Returns values computed once at mount — no interval, no re-renders.
+// All subsequent DOM updates are handled by the rAF loop in page.tsx.
 export function useTemporalEvolution(): TemporalValues {
-  const [values, setValues] = useState<TemporalValues>({
-    offsetX: 0,
-    offsetY: 0,
-    letterSpacing: 0,
-    fontWeight: 450,
-    scale: 1,
-    reflectionIntensity: 0.5,
-    angle: 0,
-  });
-
-  useEffect(() => {
-    const updateValues = () => {
-      const angle = teAngleNow();
-
-      setValues({
-        angle,
-        offsetX: Math.sin(angle) * 40,
-        offsetY: Math.cos(angle) * 28,
-        letterSpacing: Math.sin(angle) * 0.02 + 0.02,
-        fontWeight: 400 + Math.sin(angle) * 40 + 40,
-        scale: 1 + Math.sin(angle) * 0.06,
-        reflectionIntensity: 0.5 + Math.sin(angle) * 0.2,
-      });
-    };
-
-    updateValues();
-    const id = setInterval(updateValues, 100);
-    return () => clearInterval(id);
-  }, []);
-
-  return values;
+  return useMemo(() => teValuesAt(teAngleNow()), []);
 }
