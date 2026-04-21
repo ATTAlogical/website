@@ -1,10 +1,12 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "C:\\Users\\bilag\\.claude\\projects\\c--Users-bilag-ATTA-logical-attalogical-site\\memory"
-    ],
     "allow": [
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(npx tsc *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\bilag\\.claude\\projects\\c--Users-bilag-ATTA-logical-attalogical-site\\memory",
+      "c:\\Users\\bilag\\ATTA logical\\attalogical-site\\src\\app\\projects"
     ]
   }
 }

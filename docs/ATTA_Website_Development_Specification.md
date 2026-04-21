@@ -1,6 +1,6 @@
 # ATTA Website Development Specification
 **Project Management Document**  
-*Version 1.0 — April 2026*
+*Version 2.0 — April 2026*
 
 ---
 
@@ -11,8 +11,8 @@ Create a temporal, living website ecosystem that embodies the ATTA brand philoso
 
 ### 1.2 Core Principles
 - **Biological Blueprint Concept**: All variants share fundamental DNA but express differently
-- **Temporal Evolution**: Site changes gradually throughout 24-hour cycles
-- **Seamless Transitions**: Navigation maintains visual continuity through blur-based page transitions
+- **Temporal Evolution**: Site changes gradually throughout 3-day cycles
+- **Seamless Transitions**: Navigation maintains visual continuity
 - **Progressive Disclosure**: Content surfaces organically through search-driven discovery
 - **Sterile Precision**: Technical competence proven through flawless execution
 
@@ -24,13 +24,13 @@ Create a temporal, living website ecosystem that embodies the ATTA brand philoso
 ```
 ATTA (Parent Brand)
 ├── atta logical (Business/Technical)
-├── ATTA Laugical (Artistic/Creative)  
+├── ATTA Laugical (Artistic/Creative)
 └── ATTA.CKORE (Music)
 ```
 
 ### 2.2 Brand Definitions
 
-#### **atta logical** 
+#### **atta logical**
 - **Purpose**: Business presence, client acquisition, technical credibility
 - **Aesthetic**: Sterile, surgical, minimalist with glass reflections
 - **Audience**: Potential clients, business prospects, professional network
@@ -54,43 +54,135 @@ ATTA (Parent Brand)
 ## 3. TECHNICAL ARCHITECTURE
 
 ### 3.1 Technology Stack
-- **Framework**: Next.js (App Router)
-- **Styling**: Tailwind CSS + Custom CSS for advanced effects
-- **Typography**: Playfair Display (Google Fonts) via next/font/google
-- **Hosting**: Vercel (with analytics)
-- **Development**: Claude AI + Manual refinement
+- **Framework**: Next.js 16 (App Router, Turbopack)
+- **Animation**: Motion (`motion/react`) — layout animations, scroll-linked effects, SVG draw-in
+- **Styling**: Tailwind CSS + Custom CSS (`globals.css`) for advanced effects
+- **Typography**: Playfair Display (Google Fonts) via `next/font/google`
+- **Hosting**: Vercel
+- **Data**: `src/data/projects.ts` — shared type + data file, no "use client", works in both Server and Client Components
 
-### 3.2 Core Systems
+### 3.2 Temporal Evolution Engine
 
-#### **Temporal Evolution Engine**
-- **Time Source**: `Date.now()` for consistent state across visits
-- **Calculation**: Sine wave functions for smooth, cyclical changes
-- **Cycle**: 24-hour periods with hourly variation points
-- **Elements Affected**:
-  - Text position (±50px drift range)
-  - Typography (weight 400-500, letter-spacing ±0.05em)
-  - Text scale (±5-10% over hours)
-  - Background temperature (cool → warm → cool)
-  - Reflection intensity/angle
-- **Implementation**: `requestAnimationFrame` for smooth transitions
+**Cycle**: 3 days (`HOURS24 = 3 * 24 * 60 * 60 * 1000`). Updated from original 24h design.
 
-#### **Search-Driven Navigation**
-- **Entry Point**: Search bar appears after 9-12 seconds (random per visit) on landing, or immediately on interaction (click/focus) — always with 2.5s fade transition
-- **Prompt**: "what are you looking for?" — typed out character by character (55ms/char) starting 600ms after fade begins
-- **Placeholder Behavior**: Fades out (0.6s) on focus; fades back in on blur if input is empty
-- **Results**: Buttons/elements surface from beneath glass background
-- **Categories**: portfolio, contact, music, art, design, [custom terms]
-- **Behavior**: Results appear in-place maintaining single-surface feel
+**Implementation**: Single `requestAnimationFrame` loop with frame throttle (SKIP=30 at normal speed, ~2fps effective). All TE DOM updates are direct `.style` mutations — zero React re-renders during animation.
 
-#### **Blur Transition System**
-- **Trigger**: Any navigation link click
-- **Sequence**:
-  1. Current page blurs
-  2. Page unblurs to white canvas (same DNA)
-  3. New page elements populate progressively
-  4. First content appears within 1 second for usability
-- **Continuity**: No color shock, no layout shift, maintains visual DNA
-- **Loading States**: Progressive content reveal, not loading spinners
+```typescript
+// src/hooks/useTemporalEvolution.ts
+export const HOURS24 = 3 * 24 * 60 * 60 * 1000;
+export const TE_SPEED = 1; // multiplier — set >1 for testing (e.g. 1440 = full cycle in ~60s)
+
+export function teAngleNow(): number {
+  return ((Date.now() * TE_SPEED) % HOURS24) / HOURS24 * 2 * Math.PI;
+}
+
+export function teValuesAt(angle: number): TemporalValues {
+  return {
+    angle,
+    offsetX: Math.sin(angle) * 40,
+    offsetY: Math.cos(angle) * 28,
+    letterSpacing: Math.sin(angle) * 0.02 + 0.02,
+    fontWeight: 400 + Math.sin(angle) * 40 + 40,
+    scale: 1 + Math.sin(angle) * 0.06,
+    reflectionIntensity: 0.5 + Math.sin(angle) * 0.2,
+  };
+}
+```
+
+**Elements animated** (all via direct DOM `.style`):
+- Title container: `translate` + `scale`
+- Title `<h1>`: `letterSpacing`, `fontWeight`
+- Reflection div: `letterSpacing`, `fontWeight`
+- Work section: `translate` (offset phase)
+- Contact heading wrapper: `translate` (offset phase)
+- Contact links: `translate` (offset phase)
+- Bio block: `translate` (offset phase)
+- Projects section: `translate` (offset phase)
+- Chips: `translate` (orbit position, every frame)
+
+**Performance decisions**:
+- Removed `setInterval`-based state updates (was causing ~10 React re-renders/sec)
+- Removed `backdrop-filter: blur()` from body and glass pane (GPU compositing cost)
+- Removed `filter: blur()` from ambient blobs (replaced with pure radial-gradients)
+- `useMemo` for initial TE values on mount; rAF handles all subsequent updates
+
+### 3.3 Search-Driven Navigation
+
+- **Entry**: Search bar appears after 9–12s (random) or on focus; 2.5s fade-in
+- **Placeholder**: Typed out character-by-character (55ms/char), fades on focus
+- **Language switching**: Typing "dutch"/"nl"/"nederlands" switches to NL; "english"/"en"/"engels" switches back
+- **Chip system**: Keywords match to 4 categories (Laugical, CKORE, logic, Contact); matched chip orbits the glass pane on an ellipse driven by TE angle
+- **"logic" chip**: Expands the page downward (Work Experience → Contact → Projects)
+- **"Contact" chip**: After 3 clicks, auto-scrolls to contact section
+
+### 3.4 Chip Orbit System
+
+Each chip orbits the glass pane on a shared ellipse, spread by a fixed phase offset:
+
+```typescript
+const CHIP_PHASES = {
+  Laugical: 0,
+  CKORE:    Math.PI * 0.5,
+  logic:    Math.PI,
+  Contact:  Math.PI * 1.5,
+};
+```
+
+Chip position is updated every rAF frame (no throttle — chips must feel live). Chip SVG graphics use `motion.path` pathLength draw-in animations (Motion SVG animation API).
+
+### 3.5 Project Cards & Popup
+
+**Cards** (`ProjectCard` component):
+- 3D perspective tilt driven by `useMotionValue` + `useSpring` + `useTransform`
+- Cursor-tracked glare overlay via `useTransform([x, y], ...)`
+- Motion `layoutId` for FLIP animation to expanded popup
+- Drag-to-scroll row using Motion `drag="x"` with measured `dragConstraints`
+- Overflow fix: `paddingTop: 40px` + `marginTop: -40px` on row container gives 3D-tilted cards headroom
+
+**Expanded popup** (`ProjectExpanded` component):
+- `AnimatePresence` wraps the overlay; backdrop blurs behind
+- Single vertical column: full-width image → title → description → highlights → tags
+- Image links to `/catalogue#[slug]`
+- Close on Escape key or backdrop click
+- Close button floats top-right as frosted glass pill
+
+### 3.6 Catalogue System
+
+**Route**: `/catalogue` (client component — overrides `overflow: hidden` from globals.css on mount)
+
+**Layout**:
+- Top nav: sticky frosted bar with `← ATTA logical` back link
+- Per-project sections stacked vertically, each with `id={project.slug}` for anchor navigation
+- Horizontal drag-scroll image row per section (Motion `drag="x"`)
+- Fixed bottom info panel: project name, link, description, tags — updates with `AnimatePresence mode="wait"` as active project changes
+
+**Active project detection** (Motion scroll API):
+```typescript
+const { scrollYProgress: centerP } = useScroll({
+  target: sectionRef,
+  offset: ["start center", "end center"],
+});
+useMotionValueEvent(centerP, "change", (v) => {
+  if (v >= 0 && v <= 1) onBecomeActive();
+});
+```
+When a section straddles the viewport center, `scrollYProgress` is in `[0, 1]` — this triggers the bottom panel update.
+
+**Section header entrance** (scroll-linked):
+```typescript
+const { scrollYProgress: entranceP } = useScroll({
+  target: sectionRef,
+  offset: ["start 0.92", "start 0.38"],
+});
+const headerY = useTransform(entranceP, [0, 1], [38, 0]);
+const headerOpacity = useTransform(entranceP, [0, 0.6], [0, 1]);
+```
+
+**Image ordering**: `project.image` (thumbnail, filename contains "project") always leads the row; `project.images` (gallery) follow.
+
+**Shadow fix**: Row container uses `paddingTop: 16px / marginTop: -16px` (3D tilt) and `paddingBottom: 40px / marginBottom: -40px` (drop shadow) to prevent `overflow: hidden` clipping.
+
+**Per-project pages**: `/projects/[slug]` — Server Component with `generateStaticParams`, kept for future use.
 
 ---
 
@@ -98,168 +190,207 @@ ATTA (Parent Brand)
 
 ### 4.1 Shared DNA (All Brands)
 - **Typography**: Playfair Display serif, sentence case only
-- **Background**: White/near-white only — no color temperature shifts (stays cool/neutral across all brands)
+- **Background**: White/near-white only — no color temperature shifts
 - **Effects**: Glass surfaces with reflections and subtle transparency
-- **Layout**: Symmetric and clean for atta logical (formal/business); asymmetric and expressive for Laugical and CKORE
+- **Layout**: Symmetric and clean for atta logical; asymmetric and expressive for Laugical and CKORE
 - **Motion**: Organic, sine-wave based animations
 
 ### 4.2 Brand-Specific Variations
 
 #### **atta logical**
 - **Text Treatment**: Glossy gradient — bright highlight band creating a shiny, polished look
-- **Glass Effects**: Surgical precision, minimal blur effects
+- **Glass Effects**: Surgical precision — clear glass borders (see 4.3), no frosted blur on large surfaces
 - **Color Temperature**: Cool/neutral only, never warm
 - **Animation Intensity**: Subtle, professional
-- **Reflection Style**: Clean, mirror-like quality
-- **Layout**: Symmetric, centered — approachable and readable for business audience
 
 #### **ATTA Laugical**
 - **Text Treatment**: More fluid reflections, artistic interpretation
 - **Glass Effects**: Experimental, layered transparency
-- **Color Temperature**: Cool/neutral (no warm shifts)
+- **Color Temperature**: Cool/neutral
 - **Animation Intensity**: More expressive movement
-- **Reflection Style**: Organic, varied angles
 
 #### **ATTA.CKORE**
 - **Text Treatment**: Chrome-like metallic gradient — multi-highlight silver/steel look
 - **Glass Effects**: TBD
-- **Color Temperature**: Cool/neutral (no warm shifts)
-- **Animation Intensity**: TBD
-- **Reflection Style**: TBD
+- **Color Temperature**: Cool/neutral
 
-### 4.3 CSS Implementation Guidelines
+### 4.3 CSS Implementation
 
-#### **atta logical — Glossy Text** (index page title)
+#### **Glossy text** (`.glossy-text` — atta logical title, section headings)
 ```css
-font-family: "Playfair Display", serif;
-padding-bottom: 0.2em;
-background: linear-gradient(175deg, #0d0d0d 0%, #f2f2f2 22%, #0d0d0d 38%, #909090 54%, #efefef 66%, #1a1a1a 80%, #3d3d3d 100%);
+background: linear-gradient(180deg, #000000 0%, #111111 40%, #666666 80%, #888888 100%);
 -webkit-background-clip: text;
 -webkit-text-fill-color: transparent;
 background-clip: text;
-text-rendering: geometricPrecision;
-filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)) drop-shadow(0 2px 8px rgba(255,255,255,0.7));
+filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)) drop-shadow(0 2px 6px rgba(255,255,255,0.5));
 ```
+**Note**: `transform` and `-webkit-background-clip: text` cannot be on the same element (webkit rendering bug). Always wrap the glossy text in a parent that holds the transform.
 
-#### **ATTA.CKORE — Chrome Text**
+#### **Chrome text** (ATTA.CKORE chip)
 ```css
-background: linear-gradient(180deg, #888888 0%, #ffffff 25%, #aaaaaa 45%, #ffffff 65%, #777777 100%);
+background: linear-gradient(180deg, #111111 0%, #2a2a2a 30%, #909090 55%, #1a1a1a 72%, #3a3a3a 100%);
 -webkit-background-clip: text;
 -webkit-text-fill-color: transparent;
-background-clip: text;
-filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3)) drop-shadow(0 2px 8px rgba(255,255,255,0.6));
 ```
 
-#### **Glass Background Effects** (inline, on white background)
+#### **Liquid glass image frame** (`.glass-image-frame` — all project images)
+Works on both light and dark images. The double-layer border (white inner + dark outer ring) provides contrast on any background. Bevels and sheen overlay must be on `::before` (above the `<img>` element) since `inset` box-shadows on the wrapper itself render below content.
+
 ```css
-background: linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01));
-backdrop-filter: blur(8px);
-border: 1px solid rgba(0,0,0,0.08);
+.glass-image-frame {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 8px 36px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+}
+
+/* Sits above the <img> — dark inner ring + four beveled edges + surface sheen */
+.glass-image-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(168deg,
+    rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 32%,
+    transparent 55%, rgba(0,0,0,0.05) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.13),   /* dark inner ring */
+    inset 0  3px 0 rgba(255,255,255,0.85), /* top bevel bright */
+    inset 0 -3px 0 rgba(0,0,0,0.20),       /* bottom bevel dark */
+    inset  3px 0 0 rgba(255,255,255,0.28), /* left bevel bright */
+    inset -3px 0 0 rgba(0,0,0,0.09);       /* right bevel dark */
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Top specular line — light catch on the glass rim */
+.glass-image-frame::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0.90) 10%,
+    rgba(255,255,255,1) 50%, rgba(255,255,255,0.90) 90%, transparent 100%);
+  pointer-events: none;
+  z-index: 3;
+}
 ```
+
+**Applied to**: catalogue image rows (`/catalogue`), homepage project card thumbnails.
 
 ---
 
 ## 5. USER EXPERIENCE FLOWS
 
-### 5.1 Landing Experience (atta logical)
+### 5.1 Landing Experience (atta logical) — Implemented
 1. User arrives at attalogical.com
-2. Sees temporal "ATTA logical" text on glass background
-3. After 9-12 seconds, search prompt appears
-4. User can search for specific content or explore
-5. Contact info surfaces with "more details" option
-6. Portfolio results show transition buttons to other sections
+2. Sees temporal "ATTA logical" title drifting on glass background (3-day TE cycle)
+3. After 9–12 seconds, search prompt fades in with typewriter animation
+4. User searches a keyword → matching chip orbits the glass pane
+5. **"logic" chip** → page extends, becomes scrollable: Work Experience → Contact → Projects
+6. **"Contact" chip** (×3) → auto-scrolls to contact section
+7. Contact email surfaces on landing after first Contact chip click
 
-### 5.2 atta logical — Extended Landing (Portfolio/CV)
-1. User types work, website(s), portfolio, cv, hire, code, etc. → "logic" chip surfaces
-2. User clicks "logic" chip → page extends downward, becomes scrollable
-3. Below the hero section: CV-style content — work experience, projects, skills
-4. Content reveals progressively as user scrolls
-5. No separate portfolio page — this is an in-place extension of the landing page
-6. No "about" page — the site itself communicates who ATTA is
+### 5.2 Projects Flow — Implemented
+1. In extended page, project cards appear in horizontal drag-scroll row
+2. Click card → popup expands with FLIP animation (Motion `layoutId`)
+3. Popup: full-width image + title + description + highlights + tags
+4. Click image or "view catalogue" → `/catalogue#[slug]`
+5. Catalogue: horizontal image rows per project, bottom panel updates as you scroll
 
-### 5.3 atta logical — Contact Flow
-1. User types contact, email, hire, reach, etc. → "logic" chip surfaces (or a dedicated contact chip)
-2. Basic contact info surfaces in-place on the landing page (email, socials, brief)
-3. A "more" button on the surfaced info navigates to the full `/contact` page
-4. Contact page: dedicated contact information, form, and links
-5. Blur transition from landing to contact page
+### 5.3 Contact Flow — Implemented
+1. Contact email and "more →" button surface on landing after first Contact chip
+2. "more →" button opens extended sections and scrolls to Contact
+3. Contact section: name + email/instagram/github links (left) + bio + quote (right)
 
-### 5.4 Cross-Brand Navigation
-1. "Laugical" chip → navigates to ATTA Laugical brand (separate page/subdomain)
-2. "CKORE" chip → navigates to ATTA.CKORE brand (separate page/subdomain)
-3. Blur transition maintains visual continuity
-4. Each brand has its own search bar, own contact, own aesthetic — same DNA, different expression
-5. Return navigation available but not prominent
+### 5.4 Language Toggle — Implemented
+- Typing "dutch", "nl", or "nederlands" in search → full NL translation
+- Typing "english", "en", or "engels" → back to EN
+- All section headings, job descriptions, bio, and bullets are bilingual
 
-### 5.3 Progressive Loading (Laugical)
-- **First Visit**: Full artistic experience, staged content reveal
-- **Second Visit**: 50% faster loading, some elements pre-revealed
-- **Third+ Visit**: Optimized loading, familiar content loads immediately
-- **Memory**: Browser localStorage tracks visit history
+### 5.5 Cross-Brand Navigation — Planned
+1. "Laugical" chip → navigates to ATTA Laugical brand
+2. "CKORE" chip → navigates to ATTA.CKORE brand
+3. Each brand has its own search, aesthetic, and contact
 
 ---
 
-## 6. CONTENT STRATEGY
+## 6. CONTENT & INFORMATION ARCHITECTURE
 
-### 6.1 Information Architecture
+### 6.1 Implemented Routes
 
-#### **atta logical** (attalogical.com)
-- `/` — Landing: hero with "ATTA logical" + search + floating chips
-  - Scrolls down to CV/portfolio when "logic" chip activated
-  - CV section: work experience, projects built/worked on, skills
-  - No separate about page — the website IS the about
-- `/contact` — Full contact page: email, links, form, business inquiry
+#### `/` — Landing (atta logical)
+- Hero: "ATTA logical" title + glass pane + orbiting chips + search bar
+- Extended (on "logic" chip): Work Experience → Contact → Projects
+- **Work Experience**: Fullstack Developer Intern @ Stichting Asha, Utrecht (Feb 2025–present)
+  - AshaOS: Next.js/Node.js/GraphQL/PostgreSQL in Turborepo, AI helpdesk via Groq API
+- **Contact**: Boelie van Camp — email, Instagram, GitHub + bio
+- **Projects**: Drag-scroll card row with popup + catalogue link
 
-#### **ATTA Laugical** (TBD — subdomain or separate route)
-- Own landing with experimental artistic interface
-- Own search bar with art/design-specific keywords
-- Own contact section
-- Gallery: visual art, design experiments, creative work
+#### `/catalogue` — Project Catalogue
+- All projects listed as scrollable vertical sections
+- Each section: title header (scroll-entrance animation) + horizontal drag-scroll image row
+- Fixed bottom panel: active project info (updates with scroll)
+- Anchor navigation: `/catalogue#[slug]` scrolls to that project
 
-#### **ATTA.CKORE** (TBD — subdomain or separate route)
-- Own landing with music-focused interface
-- Music catalog, releases, streaming links
-- Shop: merch, physical releases
-- Own contact for music industry
+#### `/projects/[slug]` — Per-Project Page (future use)
+- Static generation via `generateStaticParams`
+- Server Component — no event handlers (CSS classes for hover)
+- Masonry image gallery, highlights grid
 
-### 6.2 SEO Considerations
-- Each brand gets distinct meta descriptions
-- Shared keywords: design, Netherlands, creative, technical
-- Brand-specific keywords optimize for different audiences
+### 6.2 Project Data (`src/data/projects.ts`)
+
+| Slug | Title | Subtitle | Has Images |
+|------|-------|----------|------------|
+| `ashaos` | AshaOS | Stichting Asha — Utrecht | ✅ 6 images |
+| `atta-logical` | ATTA logical | Personal | ✅ 1 image (thumbnail only) |
+| `follow-ai` | Follow-AI | follow-ai.nl | ✅ 4 images |
+
+Image naming convention:
+- `*-project.png` → card thumbnail + first in catalogue row
+- `*-1.png`, `*-3.png`, etc. → catalogue gallery (gaps in numbering are fine)
+- All images in `public/img/`
+
+### 6.3 Planned Routes
+- `/` extended → already covers CV/portfolio
+- Future brand routes: Laugical, CKORE (separate subdomains or routes TBD)
 
 ---
 
 ## 7. DEVELOPMENT PHASES
 
 ### 7.1 Phase 1: Foundation ✅ COMPLETE
-- Temporal evolution engine
+- Temporal evolution engine (3-day sine wave, single rAF loop)
 - Glass effects + reflections
 - Search bar with typewriter placeholder
-- Floating chip system with physics
+- Floating chip system with SVG path-draw animations
 - atta logical landing page
 
-### 7.2 Phase 2: Content Integration (Current)
-- **Goal**: Business-critical content on atta logical
-- **Deliverables**:
-  - `/contact` page — dedicated contact with ATTA logical aesthetic
-  - Landing page contact surface — basic info + "more" link, triggered by contact keyword
-  - CV/portfolio section — extends landing page downward, scrollable
-  - Mobile responsiveness
-  - Blur page transitions (deferred until more pages exist)
+### 7.2 Phase 2: Content Integration ✅ COMPLETE
+- Work Experience section (Stichting Asha)
+- Contact section with bio
+- Projects section — drag-to-scroll cards, 3D tilt, FLIP popup
+- Bilingual support (EN / NL)
+- Performance optimization (removed setInterval, backdrop-filter, filter:blur)
+- Project data file (`src/data/projects.ts`) — AshaOS, ATTA logical, Follow-AI
+- Catalogue page (`/catalogue`) with Motion scroll detection + bottom panel
+- Liquid glass image frame CSS (works on light and dark images)
+- Per-project pages (`/projects/[slug]`) stubbed for future use
 
 ### 7.3 Phase 3: Brand Expansion
 - **Goal**: Launch ATTA Laugical and ATTA.CKORE
 - **Deliverables**:
   - Laugical artistic interface — own search, own contact, progressive loading
   - CKORE music platform — own search, own contact, releases, shop
-  - Cross-brand chip navigation with blur transitions
-  - Performance optimization
+  - Cross-brand chip navigation
 
 ### 7.4 Phase 4: Refinement
 - **Goal**: Polish and optimization
 - **Deliverables**:
+  - Mobile responsiveness
   - Advanced temporal variations
-  - Micro-interaction enhancements
   - Analytics implementation
   - Launch preparation
 
@@ -268,8 +399,8 @@ border: 1px solid rgba(0,0,0,0.08);
 ## 8. SUCCESS METRICS
 
 ### 8.1 Business Objectives (atta logical)
-- **Primary**: Client inquiries through contact forms
-- **Secondary**: Time spent on portfolio pages
+- **Primary**: Client inquiries through contact
+- **Secondary**: Time spent on catalogue/portfolio pages
 - **Tertiary**: Return visitor percentage
 
 ### 8.2 Creative Objectives (ATTA Laugical)
@@ -281,27 +412,27 @@ border: 1px solid rgba(0,0,0,0.08);
 - **Performance**: Sub-3 second loading times
 - **Compatibility**: 95%+ browser support
 - **Accessibility**: WCAG 2.1 compliance
-- **Search**: First page ranking for target keywords
 
 ---
 
-## 9. RISK MITIGATION
+## 9. KNOWN CONSTRAINTS & DECISIONS
 
-### 9.1 Technical Risks
-- **Complex animations causing performance issues**
-  - Solution: Progressive enhancement, performance budgets
-- **Blur transitions not supported on all browsers**
-  - Solution: Graceful fallback to standard page transitions
-- **Temporal system causing inconsistent user experience**
-  - Solution: Extensive testing across time periods
+### 9.1 CSS / Rendering
+- **webkit background-clip + transform conflict**: `-webkit-background-clip: text` breaks on elements that also have `transform`. Fix: parent div holds transform, child span holds the glossy class.
+- **Inset box-shadows under images**: `inset` box-shadows on a div with `overflow: hidden` render *below* the `<img>` child. Glass bevel effects must live on `::before` (positioned above the image via `z-index`).
+- **Outer box-shadows clipped by overflow:hidden parent**: Drop shadows on images inside a drag container are clipped. Fix: `paddingBottom + negative marginBottom` on the container to create unclipped space.
+- **overflow: clip vs hidden for drag rows**: `overflow: hidden` creates a scroll container (enables `scrollWidth` measurement for drag constraints). `overflow: clip` does not — requires measuring the inner element's `offsetWidth` instead.
 
-### 9.2 Business Risks
-- **Artistic vision alienating potential clients**
-  - Solution: Clear separation between logical (business) and Laugical (art)
-- **Complex navigation confusing users**
-  - Solution: A/B testing search vs. traditional navigation
-- **Loading times affecting conversion**
-  - Solution: Progressive loading only on Laugical, fast loading on logical
+### 9.2 Performance
+- No `backdrop-filter` on large areas (expensive GPU compositing)
+- No CSS `filter: blur()` on ambient blobs (forces layer creation)
+- Single rAF loop for all TE updates; frame throttle SKIP=30 at TE_SPEED≤1
+- `memo` on `ChipItem`, `ChipLayer`, `ProjectCard`, `ProjectSection` to prevent unnecessary re-renders
+
+### 9.3 Next.js App Router
+- Server Components cannot have event handlers — use CSS classes (`.catalogue-back-link`, `.catalogue-visit-link`) for hover effects
+- `generateStaticParams` must live in a Server Component (cannot add `"use client"` to that file)
+- Shared data (`PROJECTS_DATA`, `ProjectEntry`) lives in a file with no `"use client"` so both Server and Client Components can import it
 
 ---
 
@@ -312,96 +443,46 @@ border: 1px solid rgba(0,0,0,0.08);
 - **Device testing**: Desktop, tablet, mobile (iOS/Android)
 - **Time-based testing**: Multiple times of day for temporal evolution
 - **Performance testing**: Lighthouse scores, Core Web Vitals
-- **Accessibility testing**: Screen readers, keyboard navigation
 
 ### 10.2 Launch Readiness Checklist
-- [ ] All temporal animations working smoothly
-- [ ] Search functionality returns relevant results
-- [ ] Blur transitions work across all page combinations
-- [ ] Glass effects render correctly on all devices
-- [ ] Contact forms capture leads properly
-- [ ] Analytics tracking implemented
-- [ ] Domain setup and SSL certificates configured
-- [ ] Content review and copy editing complete
+- [x] Temporal animations working smoothly (3-day cycle, rAF loop)
+- [x] Search functionality returns relevant chips
+- [x] Glass effects render on catalogue and cards
+- [x] Work experience and contact content live
+- [x] Project data (AshaOS, ATTA logical, Follow-AI) wired up
+- [x] Catalogue with scroll detection + bottom panel
+- [ ] Mobile responsiveness
+- [ ] Analytics tracking
+- [ ] Domain SSL and Vercel config finalized
+- [ ] Copy review complete
 
 ---
 
-## 11. POST-LAUNCH EVOLUTION
+## 11. CREATIVE PHILOSOPHY & DESIGN PRINCIPLES
 
-### 11.1 Immediate Optimizations (Month 1)
-- Monitor user behavior analytics
-- Refine temporal evolution timing based on usage patterns
-- Optimize search result relevancy
-- Fix any browser compatibility issues
-
-### 11.2 Feature Additions (Month 2-3)
-- Advanced search filters and categories
-- Interactive portfolio elements
-- Music player integration for CKORE
-- Enhanced cross-brand discovery features
-
-### 11.3 Long-term Vision (Month 4+)
-- AI-driven content personalization
-- Seasonal temporal evolution variations
-- Integration with external platforms (Spotify, Behance, etc.)
-- Community features for creative collaboration
-
----
-
-## 12. CREATIVE PHILOSOPHY & DESIGN PRINCIPLES
-
-### 12.1 Core Design Philosophy
+### 11.1 Core Design Philosophy
 The ATTA ecosystem operates on the principle that **technology and artistry are not opposing forces** but complementary expressions of the same creative impulse. Every technical decision serves the aesthetic vision, every aesthetic choice proves technical competence.
 
-### 12.2 The Biological Blueprint Concept
+### 11.2 The Biological Blueprint Concept
 Drawing inspiration from natural systems, ATTA brands share fundamental architectural DNA while expressing unique phenotypes:
 - **Consistent Foundation**: Typography, spatial relationships, temporal behavior
 - **Organic Variation**: Each brand evolves within constraints, like species in an ecosystem
 - **Living Systems**: The website breathes, evolves, and responds to time like a living organism
-- **Purposeful Mutations**: Changes serve functional or aesthetic purposes, never arbitrary variation
 
-### 12.3 Design Principles
+### 11.3 Design Principles
 
 #### **Restraint Through Precision**
-- Every element must justify its existence
-- Complexity emerges from simple rules, not additive features
-- Sterile precision in logical, expressive freedom in Laugical
-- "What can we remove?" before "What can we add?"
+Every element must justify its existence. Complexity emerges from simple rules, not additive features.
 
 #### **Time as a Design Medium**
-- Static websites are dead websites
-- Temporal evolution creates emotional connection
-- Visitors return to see how the site has grown
-- Time-based changes feel intentional, not random
+Static websites are dead websites. The 3-day TE cycle creates emotional connection — visitors return to see how the site has changed.
 
 #### **Progressive Disclosure Through Trust**
-- Reward curiosity with discovery
-- Search-driven navigation respects user agency
-- Don't force paths, create opportunities for exploration
-- The interface should feel collaborative, not controlling
+Reward curiosity with discovery. Search-driven navigation respects user agency. The interface feels collaborative, not controlling.
 
 #### **Authenticity Over Trends**
-- Avoid design clichés, especially overused "AI aesthetics"
-- Create recognition through consistent vision, not borrowed styles
-- Technical innovation serves artistic expression
-- If it feels like everyone else, it's not ATTA
-
-### 12.4 Aesthetic Commitment
-Each brand maintains unwavering commitment to its aesthetic identity:
-- **logical**: Surgical precision, glass surfaces, professional credibility
-- **Laugical**: Artistic expression, experimental interaction, personal vision
-- **CKORE**: Musical interpretation of ATTA DNA (TBD)
-
-No compromise on vision to appease broader audiences. The right people will recognize and appreciate the intention.
-
-### 12.5 Technical Artistry
-Code itself becomes a creative medium:
-- Elegant algorithms create organic motion
-- Mathematical functions generate aesthetic beauty
-- Performance optimization enables artistic expression
-- The development process embodies ATTA principles
+Avoid design clichés, especially overused "AI aesthetics". Create recognition through consistent vision, not borrowed styles. If it feels like everyone else, it's not ATTA.
 
 ---
 
-**Document prepared for ATTA development team**  
-**12 sections complete — Next update scheduled after Phase 1 completion**
+**Document version 2.0 — Updated April 2026 to reflect Phase 2 completion**

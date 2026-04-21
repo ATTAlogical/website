@@ -10,7 +10,7 @@ interface TemporalValues {
   angle: number;
 }
 
-export const HOURS24 = 24 * 60 * 60 * 1000;
+export const HOURS24 = 3 * 24 * 60 * 60 * 1000;
 
 // Speed multiplier for testing. 1 = real 24h cycle. 1440 = full cycle in ~60s.
 export const TE_SPEED = 1;

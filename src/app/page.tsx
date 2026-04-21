@@ -2,6 +2,9 @@
 
 import { useTemporalEvolution, teAngleNow, TE_SPEED } from "@/hooks/useTemporalEvolution";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "motion/react";
+import Link from "next/link";
+import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 
 const PLACEHOLDERS = {
   en: "what are you looking for?",
@@ -21,7 +24,7 @@ const CONTENT = {
       {
         role: "Fullstack Developer Intern",
         company: "Stichting Asha",
-        city: "[city]",
+        city: "Utrecht",
         period: "Feb 2025 – present",
         description: "Designed and built an internal laptop management system (AshaOS) to manage the organisation's complete laptop fleet.",
         bullets: [
@@ -46,7 +49,7 @@ const CONTENT = {
       {
         role: "Stagiair Fullstack Developer",
         company: "Stichting Asha",
-        city: "[stad]",
+        city: "Utrecht",
         period: "feb 2025 – heden",
         description: "Ontworpen en gebouwd van een intern laptopbeheersysteem (AshaOS) voor het beheren van het volledige laptoppark van de stichting.",
         bullets: [
@@ -140,6 +143,7 @@ const CATEGORIES = [
   },
 ];
 
+
 function matchLabels(query: string): string[] {
   const q = query.toLowerCase().trim();
   if (!q) return [];
@@ -207,6 +211,81 @@ const CHIP_TEXT_STYLE: React.CSSProperties = {
   letterSpacing: "0.12em",
 };
 
+const CHIP_SVG_STYLE: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "clamp(140px, 14vw, 220px)",
+  height: "clamp(70px, 7vw, 110px)",
+  pointerEvents: "none",
+  color: "#000",
+  overflow: "visible",
+};
+
+// Inline SVGs so motion.path can animate pathLength (draw-in effect)
+const ChipSVG = memo(function ChipSVG({ label }: { label: string }) {
+  if (label === "Laugical") return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      <motion.path
+        d="M18 40 C35 8 75 2 105 12 C135 22 152 38 138 55 C124 72 78 80 48 74 C18 68 1 60 18 40Z"
+        stroke="currentColor" strokeWidth="0.8"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
+      />
+      <motion.path
+        d="M32 40 C46 20 76 15 100 24 C124 33 136 40 122 52 C108 64 78 68 54 63 C30 58 18 55 32 40Z"
+        stroke="currentColor" strokeWidth="0.4"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.12 }}
+        transition={{ duration: 1.8, delay: 0.25, ease: "easeOut" }}
+      />
+    </svg>
+  );
+
+  if (label === "CKORE") return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      <motion.circle cx="80" cy="40" r="36" stroke="currentColor" strokeWidth="0.8"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
+      />
+      <motion.circle cx="80" cy="40" r="23" stroke="currentColor" strokeWidth="0.5"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.15 }}
+        transition={{ duration: 1.4, delay: 0.3, ease: "easeOut" }}
+      />
+      <motion.circle cx="80" cy="40" r="10" stroke="currentColor" strokeWidth="0.4"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.1 }}
+        transition={{ duration: 1.1, delay: 0.55, ease: "easeOut" }}
+      />
+    </svg>
+  );
+
+  if (label === "logic") return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      <motion.path
+        d="M44 18 L18 40 L44 62"
+        stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      />
+      <motion.path
+        d="M116 18 L142 40 L116 62"
+        stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 0.8, delay: 0.18, ease: "easeOut" }}
+      />
+    </svg>
+  );
+
+  return null;
+});
+
 // Per-chip memoised to prevent animation restarts on sibling updates
 const ChipItem = memo(function ChipItem({
   chip,
@@ -241,54 +320,255 @@ const ChipItem = memo(function ChipItem({
       onClick={() => onChipClick(chip.label)}
     >
       <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0.3em 0" }}>
-        {/* SVG decoration — sized independently, overflows text bounds, non-interactive */}
-        {chip.label !== "Contact" && (
-          <img
-            src={`/chips/${chip.label.toLowerCase()}.svg`}
-            alt=""
-            aria-hidden
-            draggable={false}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "clamp(140px, 14vw, 220px)",
-              height: "clamp(70px, 7vw, 110px)",
-              pointerEvents: "none",
-              animation: "chipSvgReveal 1.4s ease-out both",
-            }}
-          />
-        )}
-        {/* Label text */}
+        {chip.label !== "Contact" && <ChipSVG label={chip.label} />}
         {chip.label === "CKORE" ? (
-          <span style={{
-            ...CHROME_TEXT_STYLE,
-            position: "relative",
-            zIndex: 1,
-            animation: "chipTextReveal 0.65s 0.55s ease-out both",
-          }}>
-            {chip.label}
-          </span>
-        ) : (
-          <span
-            className="glossy-text"
-            style={{
-              ...CHIP_TEXT_STYLE,
-              paddingBottom: 0,
-              display: "inline",
-              position: "relative",
-              zIndex: 1,
-              animation: "chipTextReveal 0.65s 0.55s ease-out both",
-            }}
+          <motion.span
+            style={{ ...CHROME_TEXT_STYLE, position: "relative", zIndex: 1 }}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.55, ease: "easeOut" }}
           >
             {chip.label}
-          </span>
+          </motion.span>
+        ) : (
+          <motion.span
+            className="glossy-text"
+            style={{ ...CHIP_TEXT_STYLE, paddingBottom: 0, display: "inline", position: "relative", zIndex: 1 }}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.55, ease: "easeOut" }}
+          >
+            {chip.label}
+          </motion.span>
         )}
       </div>
     </div>
   );
 });
+
+// 3D tilt card with spring physics and moving glare — Wii U vibe
+const ProjectCard = memo(function ProjectCard({
+  project,
+  isExpanded,
+  onExpand,
+}: {
+  project: ProjectEntry;
+  isExpanded: boolean;
+  onExpand: (p: ProjectEntry) => void;
+}) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const scale = useSpring(1, { stiffness: 400, damping: 28 });
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [10, -10]), { stiffness: 400, damping: 28 });
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-10, 10]), { stiffness: 400, damping: 28 });
+  const glareBackground = useTransform([x, y], ([xv, yv]) => {
+    const gx = ((xv as number) + 0.5) * 100;
+    const gy = ((yv as number) + 0.5) * 100;
+    return `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,255,255,0.5) 0%, transparent 58%)`;
+  });
+
+  // Invisible placeholder keeps space in drag row while card is expanded
+  if (isExpanded) return <div style={{ width: "260px", height: "380px", flexShrink: 0 }} />;
+
+  return (
+    <div style={{ perspective: "800px", flexShrink: 0, width: "260px" }}>
+      <motion.div
+        layoutId={`project-card-${project.title}`}
+        style={{
+          rotateX, rotateY, scale,
+          borderRadius: "18px",
+          overflow: "hidden",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.97) 0%, rgba(247,247,249,0.94) 100%)",
+          border: "1px solid rgba(255,255,255,0.75)",
+          boxShadow: "0 2px 20px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)",
+          cursor: "pointer",
+          position: "relative",
+          fontFamily: '"Playfair Display", serif',
+        }}
+        onClick={() => onExpand(project)}
+        onMouseMove={e => {
+          const r = e.currentTarget.getBoundingClientRect();
+          x.set((e.clientX - r.left) / r.width - 0.5);
+          y.set((e.clientY - r.top) / r.height - 0.5);
+          scale.set(1.04);
+        }}
+        onMouseLeave={() => { x.set(0); y.set(0); scale.set(1); }}
+      >
+        {/* Image / preview */}
+        <div className="glass-image-frame" style={{ height: "170px", borderRadius: "18px 18px 0 0", background: "linear-gradient(135deg, #f2f2f2, #e6e6e8)" }}>
+          {project.image ? (
+            <img src={project.image} alt={project.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} draggable={false} />
+          ) : (
+            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.18)", textTransform: "uppercase" }}>preview</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "1.15rem 1.35rem 1.4rem" }}>
+          <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.3rem" }}>
+            {project.subtitle}
+          </p>
+          <h3 style={{ fontSize: "0.98rem", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "0.55rem", lineHeight: 1.3 }}>
+            {project.title}
+          </h3>
+          <p style={{ fontSize: "0.74rem", color: "rgba(0,0,0,0.48)", lineHeight: 1.8, marginBottom: "1rem", letterSpacing: "0.01em" }}>
+            {project.description}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.32rem" }}>
+            {project.tags.slice(0, 4).map(tag => (
+              <span key={tag} style={{ fontSize: "0.54rem", letterSpacing: "0.07em", padding: "0.17rem 0.48rem", border: "1px solid rgba(0,0,0,0.09)", borderRadius: "20px", color: "rgba(0,0,0,0.38)" }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Moving glare */}
+        <motion.div style={{ position: "absolute", inset: 0, background: glareBackground, pointerEvents: "none", borderRadius: "18px" }} />
+      </motion.div>
+    </div>
+  );
+});
+
+function ProjectExpanded({ project, onClose }: { project: ProjectEntry; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Blurred backdrop */}
+      <motion.div
+        style={{ position: "fixed", inset: 0, zIndex: 199, background: "rgba(8,8,8,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        onClick={onClose}
+      />
+
+      {/* Centering shell */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+        <motion.div
+          layoutId={`project-card-${project.title}`}
+          style={{
+            width: "min(600px, 90vw)",
+            maxHeight: "90vh",
+            borderRadius: "24px",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(40px) saturate(180%)",
+            WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.7)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)",
+            pointerEvents: "auto",
+            fontFamily: '"Playfair Display", serif',
+            overflow: "hidden",
+            position: "relative",
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Scrollable single column */}
+          <div className="no-scrollbar" style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+            {/* Image — full width, natural height, clickable to catalogue */}
+            <Link href={`/catalogue#${project.slug}`} style={{ display: "block", position: "relative", background: "#e8e8ea", overflow: "hidden", flexShrink: 0 }}>
+              {project.image ? (
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  draggable={false}
+                />
+              ) : (
+                <div style={{ height: "220px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+                  <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.2)", textTransform: "uppercase" }}>no preview</span>
+                </div>
+              )}
+              {/* Hover tint + catalogue label */}
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.2s", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "1.2rem" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.07)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "1"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "0"; }}
+              >
+                <span style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(255,255,255,0.9)", textTransform: "uppercase", textShadow: "0 1px 6px rgba(0,0,0,0.5)", opacity: 0, transition: "opacity 0.2s", pointerEvents: "none" }}>
+                  view catalogue →
+                </span>
+              </div>
+            </Link>
+
+            {/* Close button — floats top-right over content */}
+            <button
+              onClick={onClose}
+              style={{ position: "absolute", top: "1.1rem", right: "1.1rem", background: "rgba(255,255,255,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: "50%", width: "2rem", height: "2rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", color: "rgba(0,0,0,0.4)", lineHeight: 1, zIndex: 2 }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,1)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+            >
+              ×
+            </button>
+
+            {/* Info sections */}
+            <div style={{ padding: "2rem 2.4rem 2.4rem", display: "flex", flexDirection: "column", gap: "2rem" }}>
+
+              {/* Title */}
+              <div>
+                <p style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+                  {project.subtitle}
+                </p>
+                <h2 style={{ fontSize: "clamp(1.4rem, 2.5vw, 1.75rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", lineHeight: 1.15 }}>
+                  {project.title}
+                </h2>
+              </div>
+
+              {/* Description */}
+              <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.58)", lineHeight: 1.9, letterSpacing: "0.01em" }}>
+                {project.longDescription ?? project.description}
+              </p>
+
+              {/* Highlights */}
+              {project.highlights && (
+                <div>
+                  <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase", marginBottom: "0.85rem" }}>highlights</p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+                    {project.highlights.map((h, i) => (
+                      <li key={i} style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.48)", lineHeight: 1.75, paddingLeft: "1.2em", position: "relative", letterSpacing: "0.01em" }}>
+                        <span style={{ position: "absolute", left: 0, color: "rgba(0,0,0,0.2)" }}>—</span>
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Tags + links */}
+              <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                  {project.tags.map(tag => (
+                    <span key={tag} style={{ fontSize: "0.56rem", letterSpacing: "0.08em", padding: "0.2rem 0.55rem", border: "1px solid rgba(0,0,0,0.09)", borderRadius: "20px", color: "rgba(0,0,0,0.38)", background: "rgba(0,0,0,0.02)" }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                {project.href && (
+                  <a href={project.href} target="_blank" rel="noreferrer"
+                    style={{ fontSize: "0.7rem", letterSpacing: "0.08em", color: "rgba(0,0,0,0.4)", textDecoration: "none", borderBottom: "1px solid rgba(0,0,0,0.12)", paddingBottom: "0.1em", transition: "color 0.2s", alignSelf: "flex-start" }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#000")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.4)")}
+                  >
+                    visit site →
+                  </a>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </>
+  );
+}
 
 const ChipLayer = memo(function ChipLayer({
   chips,
@@ -327,6 +607,8 @@ export default function Home() {
   const [showExtended, setShowExtended] = useState(false);
   const [scrollToContact, setScrollToContact] = useState(false);
   const [scrollToWork, setScrollToWork] = useState(false);
+  const [expandedProject, setExpandedProject] = useState<ProjectEntry | null>(null);
+  const [cardRowDragLeft, setCardRowDragLeft] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -343,6 +625,7 @@ export default function Home() {
   const contactLinksTeRef = useRef<HTMLDivElement>(null);
   const bioTeRef = useRef<HTMLDivElement>(null);
   const projectsSectionTeRef = useRef<HTMLElement>(null);
+  const cardRowContainerRef = useRef<HTMLDivElement>(null);
 
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
@@ -385,6 +668,21 @@ export default function Home() {
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
   useEffect(() => { setMounted(true); }, []);
+
+  // Measure drag constraint for card row once extended sections are visible
+  useEffect(() => {
+    if (!showExtended) return;
+    const measure = () => {
+      if (cardRowContainerRef.current) {
+        const el = cardRowContainerRef.current;
+        // scrollWidth includes overflow even when overflow:hidden
+        setCardRowDragLeft(Math.min(0, -(el.scrollWidth - el.clientWidth)));
+      }
+    };
+    const t = setTimeout(measure, 60);
+    window.addEventListener("resize", measure);
+    return () => { clearTimeout(t); window.removeEventListener("resize", measure); };
+  }, [showExtended]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -576,6 +874,8 @@ export default function Home() {
                 lineHeight: 1.1,
                 fontFamily: '"Playfair Display", serif',
                 paddingBottom: "0.15em",
+                userSelect: "none",
+                cursor: "default",
               }}
             >
               <span className="glossy-text">ATTA logical</span>
@@ -803,17 +1103,69 @@ export default function Home() {
           </section>
 
           {/* Projects */}
-          <section ref={projectsSectionTeRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
-              {c.projects}
-            </h2>
-            <p style={{ maxWidth: "640px", fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.35)", letterSpacing: "0.04em" }}>
-              {c.projectsPlaceholder}
-            </p>
+          <section ref={projectsSectionTeRef} style={{ padding: "8vw 0", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <div style={{ paddingLeft: "12vw", paddingRight: "12vw", marginBottom: "2.5rem" }}>
+              <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
+                {c.projects}
+              </h2>
+            </div>
+
+            {/* Drag-to-scroll card row — paddingTop/marginTop give 3D-tilted cards room above */}
+            <div ref={cardRowContainerRef} style={{ overflow: "hidden", paddingTop: "40px", marginTop: "-40px" }}>
+              <motion.div
+                drag={cardRowDragLeft < 0 ? "x" : false}
+                dragConstraints={{ left: cardRowDragLeft, right: 0 }}
+                dragElastic={0.06}
+                dragMomentum
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-80px" }}
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12 } } }}
+                style={{
+                  display: "inline-flex",
+                  gap: "1.25rem",
+                  paddingLeft: "12vw",
+                  paddingRight: "12vw",
+                  paddingBottom: "2rem",
+                  cursor: cardRowDragLeft < 0 ? "grab" : "default",
+                  userSelect: "none",
+                  minWidth: "100%",
+                }}
+                whileDrag={{ cursor: "grabbing" }}
+              >
+                {PROJECTS_DATA.map(project => (
+                  <motion.div
+                    key={project.title}
+                    style={{ flexShrink: 0 }}
+                    variants={{
+                      hidden: { opacity: 0, y: 28 },
+                      show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+                    }}
+                  >
+                    <ProjectCard
+                      project={project}
+                      isExpanded={expandedProject?.title === project.title}
+                      onExpand={setExpandedProject}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
           </section>
 
         </div>
       )}
+
+      {/* Card expand overlay */}
+      <AnimatePresence>
+        {expandedProject && (
+          <ProjectExpanded
+            key={expandedProject.title}
+            project={expandedProject}
+            onClose={() => setExpandedProject(null)}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
