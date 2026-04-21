@@ -1,6 +1,6 @@
 "use client";
 
-import { useTemporalEvolution } from "@/hooks/useTemporalEvolution";
+import { useTemporalEvolution, teAngleNow, HOURS24, TE_SPEED } from "@/hooks/useTemporalEvolution";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 const PLACEHOLDERS = {
@@ -15,6 +15,8 @@ const CONTENT = {
     projects: "Projects",
     contactHeading: "Get in touch",
     projectsPlaceholder: "Projects coming soon.",
+    bio: "Software developer & aspiring biologist. An affinity for systems and patterns. Musician, with the ear that comes with it. Perfectionist where it counts, pragmatist where it can.",
+    bioQuote: "What matters is how something is made, not just whether it works.",
     jobs: [
       {
         role: "Fullstack Developer Intern",
@@ -38,6 +40,8 @@ const CONTENT = {
     projects: "Projecten",
     contactHeading: "Neem contact op",
     projectsPlaceholder: "Projecten volgen binnenkort.",
+    bio: "Softwareontwikkelaar & toekomstig bioloog. Affiniteit met systemen en patronen. Muzikant, met het gehoor dat daarbij hoort. Perfectionist waar het telt, pragmatisch waar het kan.",
+    bioQuote: "Het is van belang hoe iets gemaakt is, niet alleen of het werkt.",
     jobs: [
       {
         role: "Stagiair Fullstack Developer",
@@ -145,42 +149,36 @@ function matchLabels(query: string): string[] {
     .slice(0, 3);
 }
 
-// Find a random position outside the glass pane, not overlapping existing chips
-function findChipPosition(
-  glassRect: DOMRect | null,
-  existingChips: Array<{ x: number; y: number; state: string }>,
+// Each chip orbits the glass pane on a shared ellipse, spread by phase.
+const CHIP_PHASES: Record<string, number> = {
+  Laugical: 0,
+  CKORE:    Math.PI * 0.5,
+  logic:    Math.PI,
+  Contact:  Math.PI * 1.5,
+};
+
+function getChipPosition(
+  label: string,
+  angle: number,
   W: number,
-  H: number
+  H: number,
+  glassRect: DOMRect | null,
 ): { x: number; y: number } {
-  const MARGIN = 40;
-  const GLASS_PAD = 15;
-  const MIN_DIST = 130;
-  const active = existingChips.filter(c => c.state !== "exiting");
+  const phase = CHIP_PHASES[label] ?? 0;
+  const a = angle + phase;
 
-  for (let i = 0; i < 200; i++) {
-    const x = MARGIN + Math.random() * (W - 2 * MARGIN);
-    const y = MARGIN + Math.random() * (H - 2 * MARGIN);
+  // Orbit centered on the glass, radii just outside glass edges, capped at viewport
+  const cx = glassRect ? (glassRect.left + glassRect.right) / 2 : W / 2;
+  const cy = glassRect ? (glassRect.top + glassRect.bottom) / 2 : H / 2;
+  const glassRx = glassRect ? (glassRect.right - glassRect.left) / 2 : W * 0.375;
+  const glassRy = glassRect ? (glassRect.bottom - glassRect.top) / 2 : H * 0.375;
+  const orbitRx = Math.min(glassRx + 100, W / 2 - 60);
+  const orbitRy = Math.min(glassRy + 70, H / 2 - 40);
 
-    if (glassRect) {
-      const overGlass =
-        x >= glassRect.left - GLASS_PAD &&
-        x <= glassRect.right + GLASS_PAD &&
-        y >= glassRect.top - GLASS_PAD &&
-        y <= glassRect.bottom + GLASS_PAD;
-      if (overGlass) continue;
-    }
-
-    const tooClose = active.some(c => {
-      const dx = x - c.x;
-      const dy = y - c.y;
-      return dx * dx + dy * dy < MIN_DIST * MIN_DIST;
-    });
-
-    if (!tooClose) return { x, y };
-  }
-
-  // Fallback: top-left corner
-  return { x: MARGIN + 40, y: MARGIN + 40 };
+  return {
+    x: cx + orbitRx * Math.cos(a),
+    y: cy + orbitRy * Math.sin(a),
+  };
 }
 
 type ChipState = "entering" | "visible" | "exiting";
@@ -189,9 +187,6 @@ type Chip = {
   id: string;
   label: string;
   state: ChipState;
-  x: number;
-  y: number;
-  phase: number;
 };
 
 const CHROME_TEXT_STYLE: React.CSSProperties = {
@@ -245,29 +240,26 @@ const ChipItem = memo(function ChipItem({
       }}
       onClick={() => onChipClick(chip.label)}
     >
-      <div style={{
-        position: "relative",
-        width: chip.label === "Contact" ? "clamp(260px, 22vw, 380px)" : "clamp(140px, 14vw, 220px)",
-        height: chip.label === "Contact" ? "clamp(130px, 11vw, 190px)" : "clamp(70px, 7vw, 110px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        {/* SVG decoration — user supplies in public/chips/<label>.svg */}
-        <img
-          src={`/chips/${chip.label.toLowerCase()}.svg`}
-          alt=""
-          aria-hidden
-          draggable={false}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            animation: "chipSvgReveal 1.4s ease-out both",
-          }}
-        />
+      <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0.3em 0" }}>
+        {/* SVG decoration — sized independently, overflows text bounds, non-interactive */}
+        {chip.label !== "Contact" && (
+          <img
+            src={`/chips/${chip.label.toLowerCase()}.svg`}
+            alt=""
+            aria-hidden
+            draggable={false}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "clamp(140px, 14vw, 220px)",
+              height: "clamp(70px, 7vw, 110px)",
+              pointerEvents: "none",
+              animation: "chipSvgReveal 1.4s ease-out both",
+            }}
+          />
+        )}
         {/* Label text */}
         {chip.label === "CKORE" ? (
           <span style={{
@@ -334,17 +326,20 @@ export default function Home() {
   const [lang, setLang] = useState<"en" | "nl">("en");
   const [showExtended, setShowExtended] = useState(false);
   const [scrollToContact, setScrollToContact] = useState(false);
+  const [scrollToWork, setScrollToWork] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
+  const workSectionRef = useRef<HTMLElement>(null);
   const contactSectionRef = useRef<HTMLElement>(null);
   const glassRectRef = useRef<DOMRect | null>(null);
   const chipsRef = useRef<Chip[]>([]);
   const chipElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const rafRef = useRef<number>(0);
 
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
-    if (label === "logic") setShowExtended(true);
+    if (label === "logic") { setShowExtended(true); setScrollToWork(true); }
   }, []);
 
   const goToContact = useCallback(() => {
@@ -358,6 +353,15 @@ export default function Home() {
     document.body.style.height = showExtended ? "auto" : "";
     document.documentElement.style.height = showExtended ? "auto" : "";
   }, [showExtended]);
+
+  useEffect(() => {
+    if (!scrollToWork || !showExtended) return;
+    const t = setTimeout(() => {
+      workSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      setScrollToWork(false);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [scrollToWork, showExtended]);
 
   useEffect(() => {
     if (!scrollToContact || !showExtended) return;
@@ -385,6 +389,8 @@ export default function Home() {
     return () => window.removeEventListener("resize", update);
   }, [mounted]);
 
+
+
   useEffect(() => {
     if (!mounted) return;
     const delay = 9000 + Math.random() * 3000;
@@ -408,13 +414,31 @@ export default function Home() {
     return () => clearTimeout(start);
   }, [showSearch, lang]);
 
-  // drift disabled — re-enable when ready
+  // TE-driven chip positions — same cycle as the title drift
+  useEffect(() => {
+    const tick = () => {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const angle = teAngleNow();
+      chipsRef.current.filter(c => c.state === "visible").forEach(chip => {
+        const pos = getChipPosition(chip.label, angle, W, H, glassRectRef.current);
+        const el = chipElsRef.current.get(chip.id);
+        if (el) el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
+      });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
 
   // Set initial DOM position on entering
   useEffect(() => {
     chips.filter(c => c.state === "entering").forEach(chip => {
       const el = chipElsRef.current.get(chip.id);
-      if (el) el.style.transform = `translate(${chip.x}px, ${chip.y}px) translate(-50%, -50%)`;
+      if (el) {
+        const pos = getChipPosition(chip.label, teAngleNow(), window.innerWidth, window.innerHeight, glassRectRef.current);
+        el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
+      }
     });
   }, [chips]);
 
@@ -453,15 +477,10 @@ export default function Home() {
         next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
       }
 
-      const pos = findChipPosition(glassRectRef.current, next, window.innerWidth, window.innerHeight);
-
       next.push({
         id: `${label}-${Date.now()}-${Math.random()}`,
         label,
         state: "entering",
-        x: pos.x,
-        y: pos.y,
-        phase: Math.random() * Math.PI * 2,
       });
       return next;
     });
@@ -473,7 +492,7 @@ export default function Home() {
   const c = CONTENT[lang];
 
   return (
-    <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflow: showExtended ? "visible" : "hidden" }}>
+    <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflowX: "hidden", overflowY: showExtended ? "auto" : "hidden" }}>
       {/* ── HERO ── */}
       <div className="relative w-full overflow-hidden" style={{ height: "100svh" }}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
@@ -488,13 +507,11 @@ export default function Home() {
               backdropFilter: "blur(8px)",
               border: "1px solid rgba(0,0,0,0.08)",
               opacity: 0.4,
-              filter: `blur(${1 + temporal.reflectionIntensity * 0.5}px)`,
-              transition: "all 2s ease-in-out",
             }}
           />
 
           <div
-            className="relative z-10 flex flex-col items-start justify-center text-center sm:text-left"
+            className="relative z-10 flex flex-col items-center justify-center text-center"
             style={{
               transform: `translate(${temporal.offsetX}px, ${temporal.offsetY}px) scale(${temporal.scale})`,
               transition: "transform 1.5s ease-in-out",
@@ -574,20 +591,10 @@ export default function Home() {
           </div>
 
           <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, rgba(0,0,0,0.08), transparent)",
-              filter: `blur(${40 + temporal.reflectionIntensity * 20}px)`,
-              opacity: 0.3 + temporal.reflectionIntensity * 0.1,
-              transition: "all 2s ease-in-out",
-            }}
+            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.08), transparent)", filter: "blur(40px)", opacity: 0.3 }}
           />
           <div className="absolute bottom-1/3 -left-1/3 w-96 h-96 rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, rgba(0,0,0,0.05), transparent)",
-              filter: `blur(${50 + temporal.reflectionIntensity * 25}px)`,
-              opacity: 0.2 + temporal.reflectionIntensity * 0.1,
-              transition: "all 2s ease-in-out",
-            }}
+            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.05), transparent)", filter: "blur(50px)", opacity: 0.2 }}
           />
         </div>
 
@@ -669,11 +676,11 @@ export default function Home() {
 
       {/* ── EXTENDED SECTIONS ── */}
       {showExtended && (
-        <div style={{ background: "white", fontFamily: '"Playfair Display", serif' }}>
+        <div style={{ background: "white", fontFamily: '"Playfair Display", serif', overflowX: "hidden" }}>
 
           {/* Work Experience */}
-          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
+          <section ref={workSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transform: `translate(${Math.sin(temporal.angle) * 55}px, ${Math.cos(temporal.angle + 0.6) * 35}px)`, transition: "transform 1.5s ease-in-out" }}>
+            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
               {c.work}
             </h2>
             {c.jobs.map((job, i) => (
@@ -700,36 +707,53 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
-              {c.contact}
-            </h2>
-            <div style={{ maxWidth: "640px" }}>
-              <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem" }}>
-                Boelie van Camp
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-                {[
-                  { label: "email", href: "mailto:Boelie@attalogical.com", text: "Boelie@attalogical.com" },
-                  { label: "instagram", href: "https://www.instagram.com/boelie36/", text: "@boelie36" },
-                  { label: "github", href: "https://github.com/ATTAlogical", text: "ATTAlogical" },
-                ].map(({ label, href, text }) => (
-                  <div key={label} style={{ display: "flex", gap: "2rem", alignItems: "baseline" }}>
-                    <span style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.3)", width: "5rem", textTransform: "uppercase", flexShrink: 0 }}>{label}</span>
-                    <a href={href} target={label !== "email" ? "_blank" : undefined} rel="noreferrer"
-                      style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
-                      onMouseEnter={e => (e.currentTarget.style.color = "#000")}
-                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
-                    >{text}</a>
-                  </div>
-                ))}
+          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transition: "transform 1.5s ease-in-out" }}>
+            <div style={{ transform: `translate(${Math.sin(temporal.angle + Math.PI * 0.75) * 44}px, ${Math.cos(temporal.angle + Math.PI * 0.6) * 28}px)`, transition: "transform 1.5s ease-in-out", marginBottom: "4rem" }}>
+              <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
+                {c.contact}
+              </h2>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start" }}>
+
+              {/* Left — contact links */}
+              <div style={{ minWidth: "220px", transform: `translate(${Math.sin(temporal.angle + Math.PI * 0.5) * 48}px, ${Math.cos(temporal.angle + Math.PI * 0.4) * 30}px)`, transition: "transform 1.5s ease-in-out" }}>
+                <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem" }}>
+                  Boelie van Camp
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+                  {[
+                    { label: "email", href: "mailto:Boelie@attalogical.com", text: "Boelie@attalogical.com" },
+                    { label: "instagram", href: "https://www.instagram.com/boelie36/", text: "@boelie36" },
+                    { label: "github", href: "https://github.com/ATTAlogical", text: "ATTAlogical" },
+                  ].map(({ label, href, text }) => (
+                    <div key={label} style={{ display: "flex", gap: "2rem", alignItems: "baseline" }}>
+                      <span style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.3)", width: "5rem", textTransform: "uppercase", flexShrink: 0 }}>{label}</span>
+                      <a href={href} target={label !== "email" ? "_blank" : undefined} rel="noreferrer"
+                        style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#000")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
+                      >{text}</a>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Right — bio */}
+              <div style={{ maxWidth: "380px", transform: `translate(${Math.sin(temporal.angle + Math.PI) * 52}px, ${Math.cos(temporal.angle + Math.PI * 0.9) * 38}px)`, transition: "transform 1.5s ease-in-out" }}>
+                <p style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.6)", lineHeight: 1.9, marginBottom: "2rem", letterSpacing: "0.02em" }}>
+                  {c.bio}
+                </p>
+                <p style={{ fontSize: "clamp(0.75rem, 1vw, 0.88rem)", color: "rgba(0,0,0,0.35)", lineHeight: 1.8, fontStyle: "italic", letterSpacing: "0.03em", borderLeft: "1px solid rgba(0,0,0,0.1)", paddingLeft: "1.2em" }}>
+                  "{c.bioQuote}"
+                </p>
+              </div>
+
             </div>
           </section>
 
           {/* Projects */}
-          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: "0.2em", marginBottom: "4rem", textTransform: "uppercase" }}>
+          <section style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", transform: `translate(${Math.sin(temporal.angle + Math.PI * 1.5) * 60}px, ${Math.cos(temporal.angle + Math.PI * 1.3) * 40}px)`, transition: "transform 1.5s ease-in-out" }}>
+            <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
               {c.projects}
             </h2>
             <p style={{ maxWidth: "640px", fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.35)", letterSpacing: "0.04em" }}>
