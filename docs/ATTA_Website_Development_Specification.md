@@ -145,6 +145,8 @@ Chip position is updated every rAF frame (no throttle — chips must feel live).
 - Image links to `/catalogue#[slug]`
 - Close on Escape key or backdrop click
 - Close button floats top-right as frosted glass pill
+- **No `backdropFilter` on the FLIP element** — animating `blur(40px)` during a layoutId FLIP causes severe jank (filter composited every frame as element size changes). Solid background only; the backdrop overlay behind provides the blur.
+- **Popup scroll fix**: outer `motion.div` has `display: flex; flex-direction: column`; inner scrollable div has `flex: 1; min-height: 0; overscroll-behavior: contain`. Without `min-height: 0`, a flex child cannot shrink below its content height, so `overflow-y: auto` never activates.
 
 ### 3.6 Catalogue System
 
@@ -180,7 +182,20 @@ const headerOpacity = useTransform(entranceP, [0, 0.6], [0, 1]);
 
 **Image ordering**: `project.image` (thumbnail, filename contains "project") always leads the row; `project.images` (gallery) follow.
 
-**Shadow fix**: Row container uses `paddingTop: 16px / marginTop: -16px` (3D tilt) and `paddingBottom: 40px / marginBottom: -40px` (drop shadow) to prevent `overflow: hidden` clipping.
+**Shadow fix**: Row container uses `paddingTop: 40px / marginTop: -40px` (drop shadow headroom) and `paddingBottom: 40px / marginBottom: -40px` (bottom shadow) to prevent `overflow: hidden` clipping.
+
+**Floor reflections**: Each image row has a floor reflection below a specular glass-edge line. Implementation:
+- Shared `dragX = useMotionValue(0)` drives both the main row and the reflection `motion.div` in sync — no listeners, no duplication
+- Reflection `motion.div`: `scaleY: -1` (default `transformOrigin: center`) — keeps flipped content in the visible y-range
+- Fade: `maskImage` gradient on the reflection container with alpha encoding opacity (`rgba(0,0,0,0.38)`) + fade to transparent
+- **GPU compositing**: `will-change: transform` on the reflection container promotes it to a GPU compositing layer — `maskImage` then runs in the GPU compositor (no off-screen buffer, no software rasterization). Without this, `maskImage` requires a full software compositing pass every scroll frame.
+- **`overflow: hidden` + GPU layer escape**: A child with `will-change: transform` can visually escape a parent's `overflow: hidden` boundary in some rendering paths. Adding `will-change: transform` to the parent establishes a compositing boundary that contains promoted children.
+- Glass surface line: 1.5px specular highlight between images and reflection (`linear-gradient(90deg, ...)`)
+
+**Optimizations** (catalogue-specific):
+- `useCallback` for `onBecomeActive` in parent — previously an inline arrow function recreated every render, silently defeating `memo` on all `ProjectSection` instances whenever active project changed
+- `onBecomeActive` signature changed to `(slug: string) => void` — stable reference passed to all sections
+- `loading="lazy"` + `decoding="async"` on all images except first image of first section; reflection images always lazy
 
 **Per-project pages**: `/projects/[slug]` — Server Component with `generateStaticParams`, kept for future use.
 
@@ -377,7 +392,18 @@ Image naming convention:
 - Project data file (`src/data/projects.ts`) — AshaOS, ATTA logical, Follow-AI
 - Catalogue page (`/catalogue`) with Motion scroll detection + bottom panel
 - Liquid glass image frame CSS (works on light and dark images)
+- Floor reflections on catalogue rows with glass surface specular line
+- Popup scroll fixed + FLIP animation de-lagged
+- Catalogue performance: stable `useCallback` refs, lazy image loading, GPU-composited maskImage
 - Per-project pages (`/projects/[slug]`) stubbed for future use
+
+### 7.2.1 Phase 2 Mobile Addendum ✅ COMPLETE
+- `useIsMobile` hook (`src/hooks/useIsMobile.ts`) — uses `matchMedia`, fires only on breakpoint crosses, desktop-first init (no SSR mismatch)
+- `viewport-fit=cover` meta tag in layout — enables `env(safe-area-inset-*)` on iPhone
+- **Catalogue mobile**: images `83vw` wide (immersive, single-image-per-screen feel with peek of next); compact bottom panel (title + 2 tags + link in one row); `touchAction: pan-y` on drag row; safe-area-inset padding on bottom panel
+- **Homepage popup mobile**: native bottom sheet (`92dvh`, `border-radius: 20px 20px 0 0`, `border-bottom: none`); spring slide-up animation; drag handle; swipe-down to dismiss (velocity >400 or offset >120px); `layoutId` disabled on mobile card (no orphaned FLIP animation)
+- **Homepage extended sections**: stacked single column; reduced padding (`12vw 6vw`); contact columns stack vertically; bio block goes full-width
+- **`PopupContent`** extracted as shared component — used by both desktop FLIP popup and mobile bottom sheet
 
 ### 7.3 Phase 3: Brand Expansion
 - **Goal**: Launch ATTA Laugical and ATTA.CKORE
@@ -428,6 +454,10 @@ Image naming convention:
 - No CSS `filter: blur()` on ambient blobs (forces layer creation)
 - Single rAF loop for all TE updates; frame throttle SKIP=30 at TE_SPEED≤1
 - `memo` on `ChipItem`, `ChipLayer`, `ProjectCard`, `ProjectSection` to prevent unnecessary re-renders
+- **`maskImage` performance**: expensive when the masked element is in normal rendering flow (requires off-screen software buffer). Fast when the element already has `will-change: transform` (mask applied in GPU compositor). Always pair `maskImage` with `will-change: transform` on the same element.
+- **`repeating-linear-gradient` grain**: looks subtle but forces repaint on every scroll frame — avoid for decorative effects on scrolling content
+- **FLIP animation + filters**: never animate `backdrop-filter` or `filter: blur()` on a `layoutId` element — the filter is composited over the growing area every frame, causing severe jank
+- **`mask-image` vs cover-fade trade-off**: a cover-fade overlay (gradient from transparent → background color) avoids `maskImage` cost but fails if child GPU layers escape `overflow: hidden`. Use `maskImage` with `will-change: transform` on the container when a true alpha fade is needed.
 
 ### 9.3 Next.js App Router
 - Server Components cannot have event handlers — use CSS classes (`.catalogue-back-link`, `.catalogue-visit-link`) for hover effects
@@ -451,7 +481,7 @@ Image naming convention:
 - [x] Work experience and contact content live
 - [x] Project data (AshaOS, ATTA logical, Follow-AI) wired up
 - [x] Catalogue with scroll detection + bottom panel
-- [ ] Mobile responsiveness
+- [x] Mobile responsiveness
 - [ ] Analytics tracking
 - [ ] Domain SSL and Vercel config finalized
 - [ ] Copy review complete
@@ -485,4 +515,4 @@ Avoid design clichés, especially overused "AI aesthetics". Create recognition t
 
 ---
 
-**Document version 2.0 — Updated April 2026 to reflect Phase 2 completion**
+**Document version 2.2 — Updated April 2026 to reflect mobile responsiveness completion**

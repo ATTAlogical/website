@@ -1,6 +1,7 @@
 "use client";
 
 import { useTemporalEvolution, teAngleNow, TE_SPEED } from "@/hooks/useTemporalEvolution";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import Link from "next/link";
@@ -351,11 +352,14 @@ const ProjectCard = memo(function ProjectCard({
   project,
   isExpanded,
   onExpand,
+  isMobile,
 }: {
   project: ProjectEntry;
   isExpanded: boolean;
   onExpand: (p: ProjectEntry) => void;
+  isMobile: boolean;
 }) {
+  const cardW = isMobile ? "220px" : "260px";
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const scale = useSpring(1, { stiffness: 400, damping: 28 });
@@ -367,13 +371,12 @@ const ProjectCard = memo(function ProjectCard({
     return `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,255,255,0.5) 0%, transparent 58%)`;
   });
 
-  // Invisible placeholder keeps space in drag row while card is expanded
-  if (isExpanded) return <div style={{ width: "260px", height: "380px", flexShrink: 0 }} />;
+  if (isExpanded) return <div style={{ width: cardW, height: "380px", flexShrink: 0 }} />;
 
   return (
-    <div style={{ perspective: "800px", flexShrink: 0, width: "260px" }}>
+    <div style={{ perspective: "800px", flexShrink: 0, width: cardW }}>
       <motion.div
-        layoutId={`project-card-${project.title}`}
+        layoutId={isMobile ? undefined : `project-card-${project.title}`}
         style={{
           rotateX, rotateY, scale,
           borderRadius: "18px",
@@ -432,137 +435,144 @@ const ProjectCard = memo(function ProjectCard({
   );
 });
 
-function ProjectExpanded({ project, onClose }: { project: ProjectEntry; onClose: () => void }) {
+// Shared popup content — used in both desktop and mobile layouts
+function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: () => void }) {
+  return (
+    <>
+      <Link href={`/catalogue#${project.slug}`} style={{ display: "block", position: "relative", background: "#e8e8ea", overflow: "hidden", flexShrink: 0 }}>
+        {project.image ? (
+          <img src={project.image} alt={project.title} style={{ width: "100%", height: "auto", display: "block" }} draggable={false} />
+        ) : (
+          <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.2)", textTransform: "uppercase" }}>no preview</span>
+          </div>
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.2s", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "1.2rem" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.07)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "1"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "0"; }}
+        >
+          <span style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(255,255,255,0.9)", textTransform: "uppercase", textShadow: "0 1px 6px rgba(0,0,0,0.5)", opacity: 0, transition: "opacity 0.2s", pointerEvents: "none" }}>
+            view catalogue →
+          </span>
+        </div>
+      </Link>
+
+      <button onClick={onClose}
+        style={{ position: "absolute", top: "1.1rem", right: "1.1rem", background: "rgba(255,255,255,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: "50%", width: "2rem", height: "2rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", color: "rgba(0,0,0,0.4)", lineHeight: 1, zIndex: 2 }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,1)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+      >×</button>
+
+      <div style={{ padding: "2rem 2.2rem 2.4rem", display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+        <div>
+          <p style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.4rem" }}>{project.subtitle}</p>
+          <h2 style={{ fontSize: "clamp(1.4rem, 2.5vw, 1.75rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", lineHeight: 1.15 }}>{project.title}</h2>
+        </div>
+        <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.58)", lineHeight: 1.9, letterSpacing: "0.01em" }}>
+          {project.longDescription ?? project.description}
+        </p>
+        {project.highlights && (
+          <div>
+            <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase", marginBottom: "0.85rem" }}>highlights</p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+              {project.highlights.map((h, i) => (
+                <li key={i} style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.48)", lineHeight: 1.75, paddingLeft: "1.2em", position: "relative", letterSpacing: "0.01em" }}>
+                  <span style={{ position: "absolute", left: 0, color: "rgba(0,0,0,0.2)" }}>—</span>
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            {project.tags.map(tag => (
+              <span key={tag} style={{ fontSize: "0.56rem", letterSpacing: "0.08em", padding: "0.2rem 0.55rem", border: "1px solid rgba(0,0,0,0.09)", borderRadius: "20px", color: "rgba(0,0,0,0.38)", background: "rgba(0,0,0,0.02)" }}>{tag}</span>
+            ))}
+          </div>
+          {project.href && (
+            <a href={project.href} target="_blank" rel="noreferrer"
+              style={{ fontSize: "0.7rem", letterSpacing: "0.08em", color: "rgba(0,0,0,0.4)", textDecoration: "none", borderBottom: "1px solid rgba(0,0,0,0.12)", paddingBottom: "0.1em", transition: "color 0.2s", alignSelf: "flex-start" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "#000")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.4)")}
+            >visit site →</a>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ProjectExpanded({ project, onClose, isMobile }: { project: ProjectEntry; onClose: () => void; isMobile: boolean }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  if (isMobile) {
+    return (
+      <>
+        <motion.div
+          style={{ position: "fixed", inset: 0, zIndex: 199, background: "rgba(8,8,8,0.45)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+        />
+        <motion.div
+          style={{
+            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+            height: "92dvh", borderRadius: "20px 20px 0 0",
+            background: "rgba(252,252,252,0.99)",
+            border: "1px solid rgba(255,255,255,0.7)", borderBottom: "none",
+            boxShadow: "0 -8px 40px rgba(0,0,0,0.15)",
+            fontFamily: '"Playfair Display", serif',
+            display: "flex", flexDirection: "column", overflow: "hidden",
+          }}
+          initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 36, stiffness: 420 }}
+          drag="y"
+          dragConstraints={{ top: 0 }}
+          dragElastic={{ top: 0, bottom: 0.4 }}
+          onDragEnd={(_, info) => { if (info.velocity.y > 400 || info.offset.y > 120) onClose(); }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Drag handle */}
+          <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "0.6rem 0 0.2rem" }}>
+            <div style={{ width: "36px", height: "4px", background: "rgba(0,0,0,0.12)", borderRadius: "2px" }} />
+          </div>
+          <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overscrollBehavior: "contain", position: "relative" }}>
+            <PopupContent project={project} onClose={onClose} />
+          </div>
+        </motion.div>
+      </>
+    );
+  }
+
   return (
     <>
-      {/* Blurred backdrop */}
       <motion.div
         style={{ position: "fixed", inset: 0, zIndex: 199, background: "rgba(8,8,8,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
         onClick={onClose}
       />
-
-      {/* Centering shell */}
       <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
         <motion.div
           layoutId={`project-card-${project.title}`}
           style={{
-            width: "min(600px, 90vw)",
-            maxHeight: "90vh",
-            borderRadius: "24px",
+            width: "min(600px, 90vw)", maxHeight: "90vh", borderRadius: "24px",
             background: "rgba(252,252,252,0.98)",
             border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)",
-            pointerEvents: "auto",
-            fontFamily: '"Playfair Display", serif',
-            overflow: "hidden",
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
+            pointerEvents: "auto", fontFamily: '"Playfair Display", serif',
+            overflow: "hidden", position: "relative",
+            display: "flex", flexDirection: "column",
           }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Scrollable single column */}
           <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overscrollBehavior: "contain" }}>
-
-            {/* Image — full width, natural height, clickable to catalogue */}
-            <Link href={`/catalogue#${project.slug}`} style={{ display: "block", position: "relative", background: "#e8e8ea", overflow: "hidden", flexShrink: 0 }}>
-              {project.image ? (
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  style={{ width: "100%", height: "auto", display: "block" }}
-                  draggable={false}
-                />
-              ) : (
-                <div style={{ height: "220px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-                  <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.2)", textTransform: "uppercase" }}>no preview</span>
-                </div>
-              )}
-              {/* Hover tint + catalogue label */}
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.2s", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "1.2rem" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.07)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "1"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "0"; }}
-              >
-                <span style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(255,255,255,0.9)", textTransform: "uppercase", textShadow: "0 1px 6px rgba(0,0,0,0.5)", opacity: 0, transition: "opacity 0.2s", pointerEvents: "none" }}>
-                  view catalogue →
-                </span>
-              </div>
-            </Link>
-
-            {/* Close button — floats top-right over content */}
-            <button
-              onClick={onClose}
-              style={{ position: "absolute", top: "1.1rem", right: "1.1rem", background: "rgba(255,255,255,0.85)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: "50%", width: "2rem", height: "2rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", color: "rgba(0,0,0,0.4)", lineHeight: 1, zIndex: 2 }}
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,1)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-            >
-              ×
-            </button>
-
-            {/* Info sections */}
-            <div style={{ padding: "2rem 2.4rem 2.4rem", display: "flex", flexDirection: "column", gap: "2rem" }}>
-
-              {/* Title */}
-              <div>
-                <p style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.4rem" }}>
-                  {project.subtitle}
-                </p>
-                <h2 style={{ fontSize: "clamp(1.4rem, 2.5vw, 1.75rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", lineHeight: 1.15 }}>
-                  {project.title}
-                </h2>
-              </div>
-
-              {/* Description */}
-              <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.58)", lineHeight: 1.9, letterSpacing: "0.01em" }}>
-                {project.longDescription ?? project.description}
-              </p>
-
-              {/* Highlights */}
-              {project.highlights && (
-                <div>
-                  <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase", marginBottom: "0.85rem" }}>highlights</p>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                    {project.highlights.map((h, i) => (
-                      <li key={i} style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.48)", lineHeight: 1.75, paddingLeft: "1.2em", position: "relative", letterSpacing: "0.01em" }}>
-                        <span style={{ position: "absolute", left: 0, color: "rgba(0,0,0,0.2)" }}>—</span>
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Tags + links */}
-              <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
-                  {project.tags.map(tag => (
-                    <span key={tag} style={{ fontSize: "0.56rem", letterSpacing: "0.08em", padding: "0.2rem 0.55rem", border: "1px solid rgba(0,0,0,0.09)", borderRadius: "20px", color: "rgba(0,0,0,0.38)", background: "rgba(0,0,0,0.02)" }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                {project.href && (
-                  <a href={project.href} target="_blank" rel="noreferrer"
-                    style={{ fontSize: "0.7rem", letterSpacing: "0.08em", color: "rgba(0,0,0,0.4)", textDecoration: "none", borderBottom: "1px solid rgba(0,0,0,0.12)", paddingBottom: "0.1em", transition: "color 0.2s", alignSelf: "flex-start" }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#000")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.4)")}
-                  >
-                    visit site →
-                  </a>
-                )}
-              </div>
-
-            </div>
+            <PopupContent project={project} onClose={onClose} />
           </div>
         </motion.div>
       </div>
@@ -595,6 +605,7 @@ const ChipLayer = memo(function ChipLayer({
 
 export default function Home() {
   const temporal = useTemporalEvolution();
+  const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -1030,7 +1041,7 @@ export default function Home() {
         <div style={{ background: "white", fontFamily: '"Playfair Display", serif', overflowX: "hidden" }}>
 
           {/* Work Experience */}
-          <section ref={workSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <section ref={workSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, marginBottom: "4rem", textTransform: "uppercase" }}>
               {c.work}
             </h2>
@@ -1058,13 +1069,13 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <div ref={contactHeadingWrapRef} style={{ marginBottom: "4rem" }}>
               <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
                 {c.contact}
               </h2>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start", flexDirection: isMobile ? "column" : "row", gap: isMobile ? "2.5rem" : 0 }}>
 
               {/* Left — contact links */}
               <div ref={contactLinksTeRef} style={{ minWidth: "220px" }}>
@@ -1090,7 +1101,7 @@ export default function Home() {
               </div>
 
               {/* Right — bio */}
-              <div ref={bioTeRef} style={{ maxWidth: "380px" }}>
+              <div ref={bioTeRef} style={{ maxWidth: isMobile ? "100%" : "380px" }}>
                 <p style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.6)", lineHeight: 1.9, marginBottom: "2rem", letterSpacing: "0.02em" }}>
                   {c.bio}
                 </p>
@@ -1103,8 +1114,8 @@ export default function Home() {
           </section>
 
           {/* Projects */}
-          <section ref={projectsSectionTeRef} style={{ padding: "8vw 0", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-            <div style={{ paddingLeft: "12vw", paddingRight: "12vw", marginBottom: "2.5rem" }}>
+          <section ref={projectsSectionTeRef} style={{ padding: isMobile ? "12vw 0" : "8vw 0", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <div style={{ paddingLeft: isMobile ? "6vw" : "12vw", paddingRight: isMobile ? "6vw" : "12vw", marginBottom: "2.5rem" }}>
               <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
                 {c.projects}
               </h2>
@@ -1124,12 +1135,13 @@ export default function Home() {
                 style={{
                   display: "inline-flex",
                   gap: "1.25rem",
-                  paddingLeft: "12vw",
-                  paddingRight: "12vw",
+                  paddingLeft: isMobile ? "6vw" : "12vw",
+                  paddingRight: isMobile ? "6vw" : "12vw",
                   paddingBottom: "2rem",
                   cursor: cardRowDragLeft < 0 ? "grab" : "default",
                   userSelect: "none",
                   minWidth: "100%",
+                  touchAction: "pan-y",
                 }}
                 whileDrag={{ cursor: "grabbing" }}
               >
@@ -1146,6 +1158,7 @@ export default function Home() {
                       project={project}
                       isExpanded={expandedProject?.title === project.title}
                       onExpand={setExpandedProject}
+                      isMobile={isMobile}
                     />
                   </motion.div>
                 ))}
@@ -1163,6 +1176,7 @@ export default function Home() {
             key={expandedProject.title}
             project={expandedProject}
             onClose={() => setExpandedProject(null)}
+            isMobile={isMobile}
           />
         )}
       </AnimatePresence>
