@@ -2,7 +2,7 @@
 
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import Link from "next/link";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -12,22 +12,21 @@ import {
   useTransform,
 } from "motion/react";
 
-// One project section — owns its entrance animation and center-detection
 const ProjectSection = memo(function ProjectSection({
   project,
   onBecomeActive,
+  isFirst,
 }: {
   project: ProjectEntry;
-  onBecomeActive: () => void;
+  onBecomeActive: (slug: string) => void;
+  isFirst: boolean;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragLeft, setDragLeft] = useState(0);
-  // Shared x value — drives both the main row and the reflection in sync
   const dragX = useMotionValue(0);
 
-  // Header slides up + fades as section enters the viewport
   const { scrollYProgress: entranceP } = useScroll({
     target: sectionRef,
     offset: ["start 0.92", "start 0.38"],
@@ -35,16 +34,14 @@ const ProjectSection = memo(function ProjectSection({
   const headerY = useTransform(entranceP, [0, 1], [38, 0]);
   const headerOpacity = useTransform(entranceP, [0, 0.6], [0, 1]);
 
-  // Fire when this section straddles the viewport center
   const { scrollYProgress: centerP } = useScroll({
     target: sectionRef,
     offset: ["start center", "end center"],
   });
   useMotionValueEvent(centerP, "change", (v) => {
-    if (v >= 0 && v <= 1) onBecomeActive();
+    if (v >= 0 && v <= 1) onBecomeActive(project.slug);
   });
 
-  // Drag constraint: inner width vs container
   useEffect(() => {
     const measure = () => {
       if (!rowRef.current || !innerRef.current) return;
@@ -57,7 +54,6 @@ const ProjectSection = memo(function ProjectSection({
     return () => { clearTimeout(t); window.removeEventListener("resize", measure); };
   }, []);
 
-  // Thumbnail (project.image) always leads the row, followed by gallery images
   const allImages = [
     ...(project.image ? [project.image] : []),
     ...(project.images ?? []),
@@ -70,7 +66,6 @@ const ProjectSection = memo(function ProjectSection({
       id={project.slug}
       style={{ paddingTop: "14vh", paddingBottom: "10vh" }}
     >
-      {/* Section header */}
       <motion.div
         style={{ paddingLeft: "8vw", marginBottom: "2.5rem", y: headerY, opacity: headerOpacity }}
       >
@@ -82,8 +77,7 @@ const ProjectSection = memo(function ProjectSection({
         </h2>
       </motion.div>
 
-      {/* Horizontal drag-scroll image row */}
-      <div ref={rowRef} style={{ overflow: "hidden", paddingTop: "16px", marginTop: "-16px", paddingBottom: "40px", marginBottom: "-40px" }}>
+      <div ref={rowRef} style={{ overflow: "hidden", paddingTop: "40px", marginTop: "-40px", paddingBottom: "40px", marginBottom: "-40px" }}>
         <motion.div
           ref={innerRef}
           drag={dragLeft < 0 ? "x" : false}
@@ -93,7 +87,7 @@ const ProjectSection = memo(function ProjectSection({
           style={{
             x: dragX,
             display: "inline-flex",
-            gap: "1.25rem",
+            gap: "5rem",
             paddingLeft: "8vw",
             paddingRight: "8vw",
             cursor: dragLeft < 0 ? "grab" : "default",
@@ -118,6 +112,8 @@ const ProjectSection = memo(function ProjectSection({
                   <img
                     src={src}
                     alt={`${project.title} — ${i === 0 ? "cover" : i}`}
+                    loading={isFirst && i === 0 ? "eager" : "lazy"}
+                    decoding="async"
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                     draggable={false}
                   />
@@ -144,24 +140,35 @@ const ProjectSection = memo(function ProjectSection({
             )}
         </motion.div>
 
-        {/* Floor reflection — same images, scaleY(-1), clipped + faded with mask */}
+        {/* Glass surface edge */}
         <div
           style={{
+            marginTop: "18px",
+            height: "1.5px",
+            background: "linear-gradient(90deg, transparent 4%, rgba(255,255,255,0.85) 15%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.85) 85%, transparent 96%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Floor reflection */}
+        <div
+          style={{
+            position: "relative",
             overflow: "hidden",
             height: "22vh",
-            marginTop: "3px",
+            marginTop: "1px",
             pointerEvents: "none",
-            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.14) 55%, transparent 100%)",
-            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.14) 55%, transparent 100%)",
+            willChange: "transform",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.38) 30%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.38) 30%, transparent 100%)",
           }}
         >
           <motion.div
             style={{
               x: dragX,
               scaleY: -1,
-              transformOrigin: "top",
               display: "inline-flex",
-              gap: "1.25rem",
+              gap: "5rem",
               paddingLeft: "8vw",
               paddingRight: "8vw",
               minWidth: "100%",
@@ -185,6 +192,8 @@ const ProjectSection = memo(function ProjectSection({
                       src={src}
                       alt=""
                       aria-hidden="true"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                       draggable={false}
                     />
@@ -202,6 +211,7 @@ const ProjectSection = memo(function ProjectSection({
                 />
               )}
           </motion.div>
+
         </div>
       </div>
     </section>
@@ -212,14 +222,15 @@ export default function Catalogue() {
   const [activeSlug, setActiveSlug] = useState(PROJECTS_DATA[0].slug);
   const active = PROJECTS_DATA.find(p => p.slug === activeSlug) ?? PROJECTS_DATA[0];
 
-  // Override the global overflow:hidden so the page can scroll
+  // Stable reference — memo on ProjectSection is not defeated when activeSlug changes
+  const handleBecomeActive = useCallback((slug: string) => setActiveSlug(slug), []);
+
   useEffect(() => {
     document.body.style.overflow = "auto";
     document.body.style.height = "auto";
     document.documentElement.style.overflow = "auto";
     document.documentElement.style.height = "auto";
 
-    // Scroll to anchor if coming from popup link (/catalogue#slug)
     const id = window.location.hash.slice(1);
     if (id) {
       requestAnimationFrame(() => {
@@ -272,12 +283,12 @@ export default function Catalogue() {
         </span>
       </div>
 
-      {/* Project sections */}
-      {PROJECTS_DATA.map(project => (
+      {PROJECTS_DATA.map((project, i) => (
         <ProjectSection
           key={project.slug}
           project={project}
-          onBecomeActive={() => setActiveSlug(project.slug)}
+          onBecomeActive={handleBecomeActive}
+          isFirst={i === 0}
         />
       ))}
 
@@ -311,7 +322,6 @@ export default function Catalogue() {
               flexWrap: "wrap",
             }}
           >
-            {/* Left — name + external link */}
             <div>
               <p style={{ fontSize: "0.56rem", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.4rem" }}>
                 {active.subtitle}
@@ -347,7 +357,6 @@ export default function Catalogue() {
               )}
             </div>
 
-            {/* Right — description + tags */}
             <div style={{ maxWidth: "420px", textAlign: "right" }}>
               <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.42)", lineHeight: 1.75, marginBottom: "0.75rem", letterSpacing: "0.01em" }}>
                 {active.description}

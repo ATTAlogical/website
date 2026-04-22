@@ -459,20 +459,20 @@ function ProjectExpanded({ project, onClose }: { project: ProjectEntry; onClose:
             width: "min(600px, 90vw)",
             maxHeight: "90vh",
             borderRadius: "24px",
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(40px) saturate(180%)",
-            WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            background: "rgba(252,252,252,0.98)",
             border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)",
             pointerEvents: "auto",
             fontFamily: '"Playfair Display", serif',
             overflow: "hidden",
             position: "relative",
+            display: "flex",
+            flexDirection: "column",
           }}
           onClick={e => e.stopPropagation()}
         >
           {/* Scrollable single column */}
-          <div className="no-scrollbar" style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overscrollBehavior: "contain" }}>
 
             {/* Image — full width, natural height, clickable to catalogue */}
             <Link href={`/catalogue#${project.slug}`} style={{ display: "block", position: "relative", background: "#e8e8ea", overflow: "hidden", flexShrink: 0 }}>
