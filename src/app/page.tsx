@@ -1388,8 +1388,8 @@ export default function Home() {
       <div style={{
         position: "fixed",
         ...(isMobile
-          ? { top: "max(1.5rem, env(safe-area-inset-top, 1.5rem))", left: "max(1.5rem, env(safe-area-inset-left, 1.5rem))" }
-          : { bottom: "max(2rem, env(safe-area-inset-bottom, 2rem))", left: "max(2rem, env(safe-area-inset-left, 2rem))" }
+          ? { top: "max(2rem, env(safe-area-inset-top, 1.5rem))", left: "max(1.5rem, env(safe-area-inset-left, 1.5rem))" }
+          : { bottom: "max(1.5rem, env(safe-area-inset-bottom, 2rem))", left: "max(2rem, env(safe-area-inset-left, 2rem))" }
         ),
         display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
         zIndex: 100,
