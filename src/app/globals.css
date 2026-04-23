@@ -67,13 +67,6 @@ body::after {
   z-index: 0;
 }
 
-#__next {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  z-index: 2;
-}
-
 /* Text reflection effect - glossy polish */
 .glossy-text {
   display: block;
@@ -102,28 +95,6 @@ body::after {
 }
 
 
-/* Glass background container */
-.glass-container {
-  position: relative;
-  backdrop-filter: blur(10px);
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-}
-
-
-@media (max-width: 768px) {
-  .glossy-text {
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-}
 
 /* Hide scrollbar for card rows while keeping scroll functionality */
 .no-scrollbar::-webkit-scrollbar { display: none; }

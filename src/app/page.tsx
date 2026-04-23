@@ -6,6 +6,31 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import Link from "next/link";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
+import { resolveChip } from "@/lib/chipResolver";
+
+const BAD_WORDS = new Set([
+  "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
+  "cunt","whore","slut","fag","faggot","dyke","nigger","nigga","chink","spic","kike",
+  "gook","wetback","cracker","tranny","retard","rape","pedo","pedophile","nazi",
+  "motherfucker","motherfucking","asshole","bullshit","jackass","dumbass","dipshit",
+  "shithead","fucker","fucking","bitchy","slutty","whorish","cocks","dicks","cunts",
+]);
+
+function isBadWord(query: string): boolean {
+  const words = query.toLowerCase().trim().split(/\s+/);
+  return words.some(w => BAD_WORDS.has(w));
+}
+
+const SERIOUSLY_MSGS = [
+  "seriously?",
+  "really? again?",
+  "wow... real original",
+  "wow... real original",
+  "wow... real original",
+  "Stop.",
+  "Stop it, last warning..",
+  "dude, alright",
+];
 
 const PLACEHOLDERS = {
   en: "what are you looking for?",
@@ -21,6 +46,12 @@ const CONTENT = {
     projectsPlaceholder: "Projects coming soon.",
     bio: "Software developer & aspiring biologist. An affinity for systems and patterns. Musician, with the ear that comes with it. Perfectionist where it counts, pragmatist where it can.",
     bioQuote: "What matters is how something is made, not just whether it works.",
+    preview: "preview",
+    noPreview: "no preview",
+    viewCatalogue: "view catalogue →",
+    highlights: "highlights",
+    visitSite: "visit site →",
+    more: "more →",
     jobs: [
       {
         role: "Fullstack Developer Intern",
@@ -46,6 +77,12 @@ const CONTENT = {
     projectsPlaceholder: "Projecten volgen binnenkort.",
     bio: "Softwareontwikkelaar & toekomstig bioloog. Affiniteit met systemen en patronen. Muzikant, met het gehoor dat daarbij hoort. Perfectionist waar het telt, pragmatisch waar het kan.",
     bioQuote: "Het is van belang hoe iets gemaakt is, niet alleen of het werkt.",
+    preview: "voorbeeld",
+    noPreview: "geen voorbeeld",
+    viewCatalogue: "bekijk catalogus →",
+    highlights: "hoogtepunten",
+    visitSite: "bezoek site →",
+    more: "meer →",
     jobs: [
       {
         role: "Stagiair Fullstack Developer",
@@ -68,97 +105,11 @@ const CONTENT = {
 const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
 
-const CATEGORIES = [
-  {
-    label: "Laugical",
-    keywords: [
-      // EN — art & design
-      "art", "laugical", "design", "visual", "creative", "gallery", "illustration",
-      "graphic", "draw", "paint", "aesthetic", "photography", "photo", "image",
-      "style", "mood", "color", "colour", "type", "typography", "font", "brand",
-      "branding", "identity", "logo", "print", "digital", "experimental", "abstract",
-      "form", "composition", "texture", "pattern", "editorial", "layout", "concept",
-      "direction", "motion", "animation", "film", "video", "render", "3d",
-      "generative", "glitch", "collage", "zine", "poster", "exhibit", "showcase",
-      "collection", "series", "process", "sketchbook", "archive", "mixed", "media",
-      // NL
-      "kunst", "ontwerp", "creatief", "visueel", "tekenen", "schilderen", "fotografie",
-      "foto", "stijl", "kleur", "typografie", "lettertype", "merk", "merkidentiteit",
-      "drukwerk", "experimenteel", "abstract", "compositie", "textuur", "patroon",
-      "redactioneel", "animatie", "tentoonstelling", "collectie", "archief", "schetsboek",
-    ],
-  },
-  {
-    label: "CKORE",
-    keywords: [
-      // EN — music & audio
-      "music", "ckore", "track", "audio", "sound", "beat", "song", "release",
-      "listen", "album", "ep", "single", "producer", "production", "mix", "mixing",
-      "master", "mastering", "sample", "bass", "drums", "melody", "harmony",
-      "chord", "lyric", "lyrics", "vocal", "rap", "flow", "instrumental", "bpm",
-      "tempo", "vinyl", "stream", "streaming", "spotify", "soundcloud", "bandcamp",
-      "concert", "live", "perform", "performance", "set", "dj", "remix", "synth",
-      "synthesizer", "vst", "daw", "ableton", "studio", "recording", "tape",
-      "frequency", "waveform", "playlist", "drop", "verse", "hook",
-      // NL
-      "muziek", "nummer", "geluid", "luisteren", "album", "plaat", "single",
-      "producer", "productie", "mixen", "masteren", "bas", "melodie", "akkoord",
-      "tekst", "instrumentaal", "streamen", "optreden", "concert", "opname",
-    ],
-  },
-  {
-    label: "logic",
-    keywords: [
-      // EN — dev & business
-      "logic", "logical", "website", "web", "work", "business", "portfolio",
-      "project", "cv", "resume", "code", "dev", "build", "developer", "development",
-      "frontend", "backend", "fullstack", "full-stack", "app", "application",
-      "software", "engineer", "engineering", "tech", "technology", "digital",
-      "agency", "freelance", "hire", "service", "solution", "product", "startup",
-      "saas", "api", "database", "deploy", "deployment", "react", "next", "nextjs",
-      "node", "typescript", "javascript", "python", "cloud", "server", "hosting",
-      "ux", "ui", "interface", "system", "build", "ship", "launch", "client",
-      "contract", "rate", "stack", "repo", "github", "open source",
-      // NL
-      "werk", "bouwen", "programmeren", "ontwikkelen", "bedrijf", "zakelijk",
-      "ontwikkelaar", "ontwikkeling", "applicatie", "technologie", "freelance",
-      "dienst", "oplossing", "systeem", "server", "hosting", "klant", "opdracht",
-      "tarief", "lanceren", "opleveren",
-    ],
-  },
-  {
-    label: "Contact",
-    keywords: [
-      // EN
-      "contact", "email", "reach", "hire", "talk", "hello", "touch", "call",
-      "message", "dm", "connect", "network", "collab", "collaborate", "collaboration",
-      "partnership", "quote", "request", "booking", "book", "inquiry", "enquiry",
-      "commission", "commissions", "proposal", "available", "availability", "rates",
-      "brief", "brief me", "work together", "lets talk", "get in touch", "say hi",
-      // NL
-      "bereiken", "inhuren", "bellen", "hallo", "hoi", "hey", "samenwerken",
-      "samenwerking", "bericht", "verbinden", "offerte", "aanvraag", "boeken",
-      "commissie", "beschikbaar", "beschikbaarheid", "tarieven", "samenwerken",
-      "mail", "stuur",
-    ],
-  },
-];
-
-
-function matchLabels(query: string): string[] {
-  const q = query.toLowerCase().trim();
-  if (!q) return [];
-  return CATEGORIES
-    .filter(cat => cat.keywords.some(kw => kw.startsWith(q) || q.startsWith(kw) || kw.includes(q)))
-    .map(cat => cat.label)
-    .slice(0, 3);
-}
-
 // Each chip orbits the glass pane on a shared ellipse, spread by phase.
 const CHIP_PHASES: Record<string, number> = {
   Laugical: 0,
   CKORE:    Math.PI * 0.5,
-  logic:    Math.PI,
+  logical:  Math.PI,
   Contact:  Math.PI * 1.5,
 };
 
@@ -233,14 +184,14 @@ const ChipSVG = memo(function ChipSVG({ label }: { label: string }) {
         stroke="currentColor" strokeWidth="0.8"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.22 }}
-        transition={{ duration: 1.6, ease: "easeOut" }}
+        transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }}
       />
       <motion.path
         d="M32 40 C46 20 76 15 100 24 C124 33 136 40 122 52 C108 64 78 68 54 63 C30 58 18 55 32 40Z"
         stroke="currentColor" strokeWidth="0.4"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.12 }}
-        transition={{ duration: 1.8, delay: 0.25, ease: "easeOut" }}
+        transition={{ duration: 1.8, delay: 0.65, ease: "easeOut" }}
       />
     </svg>
   );
@@ -250,36 +201,36 @@ const ChipSVG = memo(function ChipSVG({ label }: { label: string }) {
       <motion.circle cx="80" cy="40" r="36" stroke="currentColor" strokeWidth="0.8"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.22 }}
-        transition={{ duration: 1.6, ease: "easeOut" }}
+        transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }}
       />
       <motion.circle cx="80" cy="40" r="23" stroke="currentColor" strokeWidth="0.5"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.15 }}
-        transition={{ duration: 1.4, delay: 0.3, ease: "easeOut" }}
+        transition={{ duration: 1.4, delay: 0.7, ease: "easeOut" }}
       />
       <motion.circle cx="80" cy="40" r="10" stroke="currentColor" strokeWidth="0.4"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.1 }}
-        transition={{ duration: 1.1, delay: 0.55, ease: "easeOut" }}
+        transition={{ duration: 1.1, delay: 0.95, ease: "easeOut" }}
       />
     </svg>
   );
 
-  if (label === "logic") return (
+  if (label === "logical") return (
     <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
       <motion.path
         d="M44 18 L18 40 L44 62"
         stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.22 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
       />
       <motion.path
         d="M116 18 L142 40 L116 62"
         stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.22 }}
-        transition={{ duration: 0.8, delay: 0.18, ease: "easeOut" }}
+        transition={{ duration: 0.8, delay: 0.58, ease: "easeOut" }}
       />
     </svg>
   );
@@ -353,11 +304,13 @@ const ProjectCard = memo(function ProjectCard({
   isExpanded,
   onExpand,
   isMobile,
+  lang,
 }: {
   project: ProjectEntry;
   isExpanded: boolean;
   onExpand: (p: ProjectEntry) => void;
   isMobile: boolean;
+  lang: "en" | "nl";
 }) {
   const cardW = isMobile ? "220px" : "260px";
   const x = useMotionValue(0);
@@ -398,12 +351,12 @@ const ProjectCard = memo(function ProjectCard({
         onMouseLeave={() => { x.set(0); y.set(0); scale.set(1); }}
       >
         {/* Image / preview */}
-        <div className="glass-image-frame" style={{ height: "170px", borderRadius: "18px 18px 0 0", background: "linear-gradient(135deg, #f2f2f2, #e6e6e8)" }}>
+        <div className="glass-image-frame" style={{ height: "170px", borderRadius: "18px 18px 10px 10px", background: "linear-gradient(135deg, #f2f2f2, #e6e6e8)" }}>
           {project.image ? (
             <img src={project.image} alt={project.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} draggable={false} />
           ) : (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.18)", textTransform: "uppercase" }}>preview</span>
+              <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.18)", textTransform: "uppercase" }}>{CONTENT[lang].preview}</span>
             </div>
           )}
         </div>
@@ -436,7 +389,8 @@ const ProjectCard = memo(function ProjectCard({
 });
 
 // Shared popup content — used in both desktop and mobile layouts
-function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: () => void }) {
+function PopupContent({ project, onClose, lang }: { project: ProjectEntry; onClose: () => void; lang: "en" | "nl" }) {
+  const ui = CONTENT[lang];
   return (
     <>
       <Link href={`/catalogue#${project.slug}`} style={{ display: "block", position: "relative", background: "#e8e8ea", overflow: "hidden", flexShrink: 0 }}>
@@ -444,7 +398,7 @@ function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: ()
           <img src={project.image} alt={project.title} style={{ width: "100%", height: "auto", display: "block" }} draggable={false} />
         ) : (
           <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.2)", textTransform: "uppercase" }}>no preview</span>
+            <span style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(0,0,0,0.2)", textTransform: "uppercase" }}>{ui.noPreview}</span>
           </div>
         )}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.2s", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "1.2rem" }}
@@ -452,7 +406,7 @@ function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: ()
           onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0)"; (e.currentTarget.lastChild as HTMLElement).style.opacity = "0"; }}
         >
           <span style={{ fontSize: "0.58rem", letterSpacing: "0.14em", color: "rgba(255,255,255,0.9)", textTransform: "uppercase", textShadow: "0 1px 6px rgba(0,0,0,0.5)", opacity: 0, transition: "opacity 0.2s", pointerEvents: "none" }}>
-            view catalogue →
+            {ui.viewCatalogue}
           </span>
         </div>
       </Link>
@@ -473,7 +427,7 @@ function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: ()
         </p>
         {project.highlights && (
           <div>
-            <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase", marginBottom: "0.85rem" }}>highlights</p>
+            <p style={{ fontSize: "0.56rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase", marginBottom: "0.85rem" }}>{ui.highlights}</p>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.55rem" }}>
               {project.highlights.map((h, i) => (
                 <li key={i} style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.48)", lineHeight: 1.75, paddingLeft: "1.2em", position: "relative", letterSpacing: "0.01em" }}>
@@ -495,7 +449,7 @@ function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: ()
               style={{ fontSize: "0.7rem", letterSpacing: "0.08em", color: "rgba(0,0,0,0.4)", textDecoration: "none", borderBottom: "1px solid rgba(0,0,0,0.12)", paddingBottom: "0.1em", transition: "color 0.2s", alignSelf: "flex-start" }}
               onMouseEnter={e => (e.currentTarget.style.color = "#000")}
               onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.4)")}
-            >visit site →</a>
+            >{ui.visitSite}</a>
           )}
         </div>
       </div>
@@ -503,7 +457,7 @@ function PopupContent({ project, onClose }: { project: ProjectEntry; onClose: ()
   );
 }
 
-function ProjectExpanded({ project, onClose, isMobile }: { project: ProjectEntry; onClose: () => void; isMobile: boolean }) {
+function ProjectExpanded({ project, onClose, isMobile, lang }: { project: ProjectEntry; onClose: () => void; isMobile: boolean; lang: "en" | "nl" }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -542,7 +496,7 @@ function ProjectExpanded({ project, onClose, isMobile }: { project: ProjectEntry
             <div style={{ width: "36px", height: "4px", background: "rgba(0,0,0,0.12)", borderRadius: "2px" }} />
           </div>
           <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overscrollBehavior: "contain", position: "relative" }}>
-            <PopupContent project={project} onClose={onClose} />
+            <PopupContent project={project} onClose={onClose} lang={lang} />
           </div>
         </motion.div>
       </>
@@ -572,7 +526,7 @@ function ProjectExpanded({ project, onClose, isMobile }: { project: ProjectEntry
           onClick={e => e.stopPropagation()}
         >
           <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overscrollBehavior: "contain" }}>
-            <PopupContent project={project} onClose={onClose} />
+            <PopupContent project={project} onClose={onClose} lang={lang} />
           </div>
         </motion.div>
       </div>
@@ -608,11 +562,17 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [logicalNudgeDone, setLogicalNudgeDone] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [typedPlaceholder, setTypedPlaceholder] = useState("");
   const [chips, setChips] = useState<Chip[]>([]);
-  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [chipTransDir, setChipTransDir] = useState<1 | -1>(1);
+  const [chipSubmitCount, setChipSubmitCount] = useState(0);
+  const [submittedQuery, setSubmittedQuery] = useState<{ value: string; nonce: number } | null>(null);
+  const [seriouslyEntry, setSeriouslyEntry] = useState<{ message: string; id: number } | null>(null);
+  const [seriouslyCount, setSeriouslyCount] = useState(0);
+  const [showYoureDone, setShowYoureDone] = useState(false);
   const [contactClicks, setContactClicks] = useState(0);
   const [lang, setLang] = useState<"en" | "nl">("en");
   const [showExtended, setShowExtended] = useState(false);
@@ -637,11 +597,14 @@ export default function Home() {
   const bioTeRef = useRef<HTMLDivElement>(null);
   const projectsSectionTeRef = useRef<HTMLElement>(null);
   const cardRowContainerRef = useRef<HTMLDivElement>(null);
+  const isMobileRef = useRef(false);
 
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
-    if (label === "logic") { setShowExtended(true); setScrollToWork(true); }
+    if (label === "logical") { setShowExtended(true); setScrollToWork(true); }
   }, []);
+
+  const handleClosePopup = useCallback(() => setExpandedProject(null), []);
 
   const goToContact = useCallback(() => {
     setShowExtended(true);
@@ -678,6 +641,7 @@ export default function Home() {
   }, [contactClicks, goToContact]);
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
+  useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
   useEffect(() => { setMounted(true); }, []);
 
   // Measure drag constraint for card row once extended sections are visible
@@ -709,10 +673,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!mounted) return;
+    if (isMobile) { setShowSearch(true); return; }
     const delay = 9000 + Math.random() * 3000;
     const t = setTimeout(() => setShowSearch(true), delay);
     return () => clearTimeout(t);
-  }, [mounted]);
+  }, [mounted, isMobile]);
 
   useEffect(() => {
     if (!showSearch) return;
@@ -726,7 +691,7 @@ export default function Home() {
         if (i >= ph.length) clearInterval(iv);
       }, 55);
       return () => clearInterval(iv);
-    }, showSearch ? 600 : 0);
+    }, 600);
     return () => clearTimeout(start);
   }, [showSearch, lang]);
 
@@ -761,21 +726,23 @@ export default function Home() {
         reflectionRef.current.style.letterSpacing = `${s(angle) * 0.02 + 0.02}em`;
         reflectionRef.current.style.fontWeight = String(400 + s(angle) * 40 + 40);
       }
-      // TE: extended sections
-      if (workSectionRef.current) {
-        workSectionRef.current.style.transform = `translate(${s(angle) * 55}px, ${co(angle + 0.6) * 35}px)`;
-      }
-      if (contactHeadingWrapRef.current) {
-        contactHeadingWrapRef.current.style.transform = `translate(${s(angle + PI * 0.75) * 44}px, ${co(angle + PI * 0.6) * 28}px)`;
-      }
-      if (contactLinksTeRef.current) {
-        contactLinksTeRef.current.style.transform = `translate(${s(angle + PI * 0.5) * 48}px, ${co(angle + PI * 0.4) * 30}px)`;
-      }
-      if (bioTeRef.current) {
-        bioTeRef.current.style.transform = `translate(${s(angle + PI) * 52}px, ${co(angle + PI * 0.9) * 38}px)`;
-      }
-      if (projectsSectionTeRef.current) {
-        projectsSectionTeRef.current.style.transform = `translate(${s(angle + PI * 1.5) * 60}px, ${co(angle + PI * 1.3) * 40}px)`;
+      // TE: extended sections — disabled on mobile (±60px shift breaks narrow layouts)
+      if (!isMobileRef.current) {
+        if (workSectionRef.current) {
+          workSectionRef.current.style.transform = `translate(${s(angle) * 55}px, ${co(angle + 0.6) * 35}px)`;
+        }
+        if (contactHeadingWrapRef.current) {
+          contactHeadingWrapRef.current.style.transform = `translate(${s(angle + PI * 0.75) * 44}px, ${co(angle + PI * 0.6) * 28}px)`;
+        }
+        if (contactLinksTeRef.current) {
+          contactLinksTeRef.current.style.transform = `translate(${s(angle + PI * 0.5) * 48}px, ${co(angle + PI * 0.4) * 30}px)`;
+        }
+        if (bioTeRef.current) {
+          bioTeRef.current.style.transform = `translate(${s(angle + PI) * 52}px, ${co(angle + PI * 0.9) * 38}px)`;
+        }
+        if (projectsSectionTeRef.current) {
+          projectsSectionTeRef.current.style.transform = `translate(${s(angle + PI * 1.5) * 60}px, ${co(angle + PI * 1.3) * 40}px)`;
+        }
       }
 
       // Chips
@@ -822,16 +789,18 @@ export default function Home() {
   // Add chip on submit
   useEffect(() => {
     if (!submittedQuery) return;
-    const matches = matchLabels(submittedQuery);
-    if (!matches.length) return;
-    const label = matches[0];
+    const label = resolveChip(submittedQuery.value);
+    if (!label) return;
+
+    setChipSubmitCount(c => c + 1);
+    setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
 
     setChips(prev => {
       const active = prev.filter(c => c.state !== "exiting");
       if (active.some(c => c.label === label)) return prev;
 
       let next = [...prev];
-      if (active.length >= 3) {
+      if (active.length >= 1) {
         const oldest = active[0];
         next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
       }
@@ -845,200 +814,377 @@ export default function Home() {
     });
   }, [submittedQuery]);
 
+  useEffect(() => {
+    if (!submittedQuery || !isBadWord(submittedQuery.value)) return;
+    setSeriouslyCount(prev => {
+      const next = prev + 1;
+      if (next >= 9) {
+        setShowYoureDone(true);
+      } else {
+        const message = SERIOUSLY_MSGS[Math.min(next - 1, SERIOUSLY_MSGS.length - 1)];
+        setSeriouslyEntry({ message, id: Date.now() });
+      }
+      return next;
+    });
+  }, [submittedQuery]);
+
+  useEffect(() => {
+    if (!seriouslyEntry) return;
+    const id = seriouslyEntry.id;
+    const t = setTimeout(() => {
+      setSeriouslyEntry(curr => curr?.id === id ? null : curr);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [seriouslyEntry]);
+
+  useEffect(() => {
+    if (!showSearch || logicalNudgeDone) return;
+    const t = setTimeout(() => {
+      setSubmittedQuery(prev => ({ value: "logical", nonce: (prev?.nonce ?? 0) + 1 }));
+      setLogicalNudgeDone(true);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [showSearch, logicalNudgeDone]);
+
   if (!mounted) return null;
 
   const placeholderVisible = !isFocused && searchValue === "";
   const c = CONTENT[lang];
 
   return (
-    <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflowX: "hidden", overflowY: showExtended ? "auto" : "hidden" }}>
+    <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflow: "clip" }}>
       {/* ── HERO ── */}
-      <div className="relative w-full overflow-hidden" style={{ height: "100svh" }}>
+      <div className="relative w-full" style={{ height: "100svh", overflow: "clip" }}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none opacity-30" />
 
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            ref={glassRef}
-            className="absolute w-3/4 h-3/4 max-w-4xl rounded-2xl"
-            style={{
-              background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
-              border: "1px solid rgba(0,0,0,0.08)",
-              opacity: 0.4,
-            }}
-          />
-
-          <div
-            ref={titleContainerRef}
-            className="relative z-10 flex flex-col items-center justify-center text-center"
-            style={{
-              transform: `translate(${temporal.offsetX}px, ${temporal.offsetY}px) scale(${temporal.scale})`,
-            }}
-          >
-            <h1
-              ref={h1Ref}
-              className="glossy-text-shadow"
-              style={{
-                fontSize: "clamp(2rem, 8vw, 6rem)",
-                letterSpacing: `${temporal.letterSpacing}em`,
-                fontWeight: temporal.fontWeight as any,
-                lineHeight: 1.1,
-                fontFamily: '"Playfair Display", serif',
-                paddingBottom: "0.15em",
-                userSelect: "none",
-                cursor: "default",
-              }}
-            >
-              <span className="glossy-text">ATTA logical</span>
-            </h1>
-
-            <div
-              ref={reflectionRef}
-              className="pointer-events-none"
-              style={{
-                marginTop: "-0.1em",
-                opacity: 0.18,
-                transform: "scaleY(-0.85) translateY(0.2rem)",
-                filter: "blur(1.5px)",
-                fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(2rem, 8vw, 6rem)",
-                fontWeight: temporal.fontWeight as any,
-                letterSpacing: `${temporal.letterSpacing}em`,
-                lineHeight: 1.1,
-              }}
-            >
-              <span className="glossy-text">ATTA logical</span>
+        {isMobile ? (
+          /* ── MOBILE HERO ── */
+          <>
+            {/* Centered glass pane + title */}
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div
+                ref={glassRef}
+                style={{
+                  position: "absolute",
+                  width: "82vw", height: "44vw",
+                  borderRadius: "20px",
+                  background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
+                  border: "1px solid rgba(0,0,0,0.07)",
+                  opacity: 0.4,
+                }}
+              />
+              <div style={{ position: "relative", zIndex: 10, textAlign: "center" }}>
+                <h1
+                  className="glossy-text-shadow"
+                  style={{
+                    fontSize: "clamp(1.8rem, 9.5vw, 3.2rem)",
+                    letterSpacing: "0.02em",
+                    fontWeight: 440,
+                    lineHeight: 1.1,
+                    fontFamily: '"Playfair Display", serif',
+                    paddingBottom: "0.15em",
+                    userSelect: "none",
+                  }}
+                >
+                  <span className="glossy-text">ATTA logical</span>
+                </h1>
+                <div
+                  className="pointer-events-none"
+                  style={{
+                    marginTop: "-0.1em", opacity: 0.18,
+                    transform: "scaleY(-0.85) translateY(0.2rem)",
+                    filter: "blur(1.5px)",
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "clamp(1.8rem, 9.5vw, 3.2rem)",
+                    fontWeight: 440,
+                    letterSpacing: "0.02em",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  <span className="glossy-text">ATTA logical</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Contact email surface */}
-          <div
-            className="absolute"
-            style={{
-              bottom: "21%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 12,
-              textAlign: "center",
+            {/* Active chip — swipes in/out from opposite sides */}
+            <div style={{ position: "absolute", top: "calc(50% + 22vw)", left: 0, right: 0, display: "flex", justifyContent: "center", overflow: "hidden" }}>
+              <AnimatePresence mode="popLayout">
+                {chips.filter(ch => ch.state !== "exiting").map(chip => (
+                  <motion.button
+                    key={chip.id}
+                    initial={chipSubmitCount <= 1
+                      ? { x: 0, opacity: 0, scale: 0.88 }
+                      : { x: chipTransDir * 500, opacity: 0, scale: 1 }
+                    }
+                    animate={{ x: 0, opacity: 1, scale: 1 }}
+                    exit={{
+                      x: chipTransDir * 500, opacity: 0, scale: 0.95,
+                      transition: {
+                        type: "spring", stiffness: 60, damping: 12, mass: 1.5,
+                        opacity: { type: "tween", duration: 0.38, ease: "easeIn" },
+                      },
+                    }}
+                    transition={{
+                      type: "spring", stiffness: 120, damping: 12, mass: 1.5,
+                      opacity: { type: "tween", duration: chipSubmitCount <= 1 ? 1.5 : 0.65, ease: "easeOut" },
+                    }}
+                    onClick={() => handleChipClick(chip.label)}
+                    style={{
+                      background: "none", border: "none",
+                      borderBottom: "1px solid rgba(0,0,0,0.18)",
+                      padding: "0.1em 0",
+                      fontFamily: '"Playfair Display", serif',
+                      fontSize: "clamp(0.9rem, 4.5vw, 1.2rem)",
+                      letterSpacing: "0.12em",
+                      color: "rgba(0,0,0,0.6)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {chip.label}
+                  </motion.button>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Contact email */}
+            <div style={{
+              position: "absolute", top: "calc(50% + 30vw)", left: 0, right: 0,
+              display: "flex", justifyContent: "center",
               opacity: contactClicks > 0 ? 1 : 0,
               transition: "opacity 1s ease-in-out",
               pointerEvents: contactClicks > 0 ? "auto" : "none",
-            }}
-          >
-            <a
-              href="mailto:Boelie@attalogical.com"
-              className="glossy-text"
-              style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none", whiteSpace: "nowrap" }}
-            >
-              Boelie@attalogical.com
-            </a>
-            <button
-              onClick={goToContact}
-              style={{
-                marginTop: "0.6em",
-                background: "none",
-                border: "none",
-                fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(0.6rem, 0.9vw, 0.75rem)",
-                letterSpacing: "0.12em",
-                color: "rgba(0,0,0,0.35)",
-                cursor: "pointer",
-                padding: 0,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.35)")}
-            >
-              more →
-            </button>
-          </div>
+            }}>
+              <a href="mailto:Boelie@attalogical.com" className="glossy-text"
+                style={{ display: "inline", paddingBottom: 0, fontSize: "clamp(0.65rem, 3.5vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none" }}>
+                Boelie@attalogical.com
+              </a>
+            </div>
 
-          <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 70%)", opacity: 0.3 }}
-          />
-          <div className="absolute bottom-1/3 -left-1/3 w-96 h-96 rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(0,0,0,0.04) 0%, transparent 70%)", opacity: 0.2 }}
-          />
-        </div>
+            {/* Search bar — same underline style as desktop, anchored to bottom */}
+            <div style={{ position: "absolute", bottom: "max(4vh, env(safe-area-inset-bottom, 4vh))", left: "50%", transform: "translateX(-50%)" }}>
+              <div style={{ position: "relative" }}>
+                <span aria-hidden style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontFamily: '"Playfair Display", serif',
+                  fontSize: "1rem", letterSpacing: "0.08em",
+                  color: "rgba(0,0,0,0.35)", pointerEvents: "none",
+                  whiteSpace: "nowrap",
+                  opacity: placeholderVisible ? 1 : 0,
+                  transition: "opacity 0.3s",
+                }}>
+                  {typedPlaceholder}
+                </span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={searchValue}
+                  onChange={e => setSearchValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key !== "Enter") return;
+                    const q = searchValue.trim();
+                    if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
+                    if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
+                    setSubmittedQuery(prev => ({ value: searchValue, nonce: (prev?.nonce ?? 0) + 1 }));
+                    setSearchValue("");
+                  }}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  style={{
+                    width: "85vw",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: "1px solid rgba(0,0,0,0.15)",
+                    outline: "none",
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "1rem",
+                    color: "#000",
+                    letterSpacing: "0.08em",
+                    padding: "0.4em 0",
+                    textAlign: "center",
+                    caretColor: "#000",
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* ── DESKTOP HERO ── */
+          <>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div
+                ref={glassRef}
+                className="absolute w-3/4 h-3/4 max-w-4xl rounded-2xl"
+                style={{
+                  background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  opacity: 0.4,
+                }}
+              />
 
-        <ChipLayer
-          chips={chips}
-          chipElsRef={chipElsRef}
-          onChipClick={handleChipClick}
-        />
+              <div
+                ref={titleContainerRef}
+                className="relative z-10 flex flex-col items-center justify-center text-center"
+                style={{
+                  transform: `translate(${temporal.offsetX}px, ${temporal.offsetY}px) scale(${temporal.scale})`,
+                }}
+              >
+                <h1
+                  ref={h1Ref}
+                  className="glossy-text-shadow"
+                  style={{
+                    fontSize: "clamp(2rem, 8vw, 6rem)",
+                    letterSpacing: `${temporal.letterSpacing}em`,
+                    fontWeight: temporal.fontWeight as any,
+                    lineHeight: 1.1,
+                    fontFamily: '"Playfair Display", serif',
+                    paddingBottom: "0.15em",
+                    userSelect: "none",
+                    cursor: "default",
+                  }}
+                >
+                  <span className="glossy-text">ATTA logical</span>
+                </h1>
 
-        {/* Search bar */}
-        <div
-          className="absolute inset-0 flex items-end justify-center pointer-events-none"
-          style={{ paddingBottom: "12vh" }}
-        >
-          <div
-            className="relative pointer-events-auto"
-            style={{
-              opacity: showSearch ? 1 : 0,
-              transform: showSearch ? "translateY(0)" : "translateY(8px)",
-              transition: "opacity 2.5s ease-in-out, transform 2.5s ease-in-out",
-            }}
-          >
-            <span
-              aria-hidden
+                <div
+                  ref={reflectionRef}
+                  className="pointer-events-none"
+                  style={{
+                    marginTop: "-0.1em",
+                    opacity: 0.18,
+                    transform: "scaleY(-0.85) translateY(0.2rem)",
+                    filter: "blur(1.5px)",
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "clamp(2rem, 8vw, 6rem)",
+                    fontWeight: temporal.fontWeight as any,
+                    letterSpacing: `${temporal.letterSpacing}em`,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  <span className="glossy-text">ATTA logical</span>
+                </div>
+              </div>
+
+              {/* Contact email surface */}
+              <div
+                className="absolute"
+                style={{
+                  bottom: "21%", left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 12, textAlign: "center",
+                  opacity: contactClicks > 0 ? 1 : 0,
+                  transition: "opacity 1s ease-in-out",
+                  pointerEvents: contactClicks > 0 ? "auto" : "none",
+                }}
+              >
+                <a href="mailto:Boelie@attalogical.com" className="glossy-text"
+                  style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none", whiteSpace: "nowrap" }}>
+                  Boelie@attalogical.com
+                </a>
+                <button onClick={goToContact}
+                  style={{ marginTop: "0.6em", background: "none", border: "none", fontFamily: '"Playfair Display", serif', fontSize: "clamp(0.6rem, 0.9vw, 0.75rem)", letterSpacing: "0.12em", color: "rgba(0,0,0,0.35)", cursor: "pointer", padding: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.35)")}
+                >
+                  {c.more}
+                </button>
+              </div>
+
+              <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full pointer-events-none"
+                style={{ background: "radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 70%)", opacity: 0.3 }} />
+              <div className="absolute bottom-1/3 -left-1/3 w-96 h-96 rounded-full pointer-events-none"
+                style={{ background: "radial-gradient(circle, rgba(0,0,0,0.04) 0%, transparent 70%)", opacity: 0.2 }} />
+            </div>
+
+            <ChipLayer chips={chips} chipElsRef={chipElsRef} onChipClick={handleChipClick} />
+
+            {/* Search bar */}
+            <div className="absolute inset-0 flex items-end justify-center pointer-events-none" style={{ paddingBottom: "12vh" }}>
+              <div className="relative pointer-events-auto" style={{
+                opacity: showSearch ? 1 : 0,
+                transform: showSearch ? "translateY(0)" : "translateY(8px)",
+                transition: "opacity 2.5s ease-in-out, transform 2.5s ease-in-out",
+              }}>
+                <span aria-hidden style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontFamily: '"Playfair Display", serif',
+                  fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
+                  letterSpacing: "0.08em", color: "rgba(0,0,0,0.35)",
+                  pointerEvents: "none", whiteSpace: "nowrap",
+                  opacity: placeholderVisible ? 1 : 0,
+                  transition: "opacity 0.6s ease-in-out",
+                }}>
+                  {typedPlaceholder}
+                </span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={searchValue}
+                  onChange={e => setSearchValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key !== "Enter") return;
+                    const q = searchValue.trim();
+                    if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
+                    if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
+                    setSubmittedQuery(prev => ({ value: searchValue, nonce: (prev?.nonce ?? 0) + 1 }));
+                  }}
+                  onFocus={() => { setShowSearch(true); setIsFocused(true); }}
+                  onBlur={() => setIsFocused(false)}
+                  style={{
+                    background: "transparent", border: "none",
+                    borderBottom: "1px solid rgba(0,0,0,0.15)", outline: "none",
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
+                    color: "#000", letterSpacing: "0.08em",
+                    padding: "0.4em 0",
+                    width: "clamp(180px, 25vw, 320px)",
+                    textAlign: "center", caretColor: "#000",
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+        {/* ── SERIOUSLY ── */}
+        <AnimatePresence>
+          {seriouslyEntry && (
+            <motion.div
+              key={seriouslyEntry.id}
               style={{
                 position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
-                letterSpacing: "0.08em",
-                color: "rgba(0,0,0,0.35)",
-                pointerEvents: "none",
-                whiteSpace: "nowrap",
-                opacity: placeholderVisible ? 1 : 0,
-                transition: "opacity 0.6s ease-in-out",
+                top: 0, left: 0, right: 0,
+                height: isMobile ? "calc(50svh - 22vw)" : "12.5svh",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                pointerEvents: "none", zIndex: 50,
               }}
+              animate={{ opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 6, times: [0, 0.03, 0.82, 1], ease: "easeInOut" }}
+              exit={{ opacity: 0, transition: { duration: 0.22, ease: "easeIn" } }}
             >
-              {typedPlaceholder}
-            </span>
-
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key !== "Enter") return;
-                const q = searchValue.trim();
-                if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
-                if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
-                setSubmittedQuery(searchValue);
-              }}
-              onFocus={() => { setShowSearch(true); setIsFocused(true); }}
-              onBlur={() => setIsFocused(false)}
-              style={{
-                background: "transparent",
-                border: "none",
-                borderBottom: "1px solid rgba(0,0,0,0.15)",
-                outline: "none",
+              <span style={{
                 fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
-                color: "#000",
-                letterSpacing: "0.08em",
-                padding: "0.4em 0",
-                width: "clamp(180px, 25vw, 320px)",
-                textAlign: "center",
-                caretColor: "#000",
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="lg:hidden absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="absolute inset-0 bg-white/40" />
-        </div>
+                fontSize: "clamp(0.9rem, 3.5vw, 1.3rem)",
+                color: "rgba(0,0,0,0.38)",
+                letterSpacing: "0.22em",
+                fontStyle: "italic",
+              }}>
+                {seriouslyEntry.message}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>{/* end hero */}
 
       {/* ── EXTENDED SECTIONS ── */}
       {showExtended && (
-        <div style={{ background: "white", fontFamily: '"Playfair Display", serif', overflowX: "hidden" }}>
+        <div style={{ background: "white", fontFamily: '"Playfair Display", serif', overflowX: "clip" }}>
 
           {/* Work Experience */}
           <section ref={workSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
@@ -1069,17 +1215,17 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw 12vw 26vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <div ref={contactHeadingWrapRef} style={{ marginBottom: "4rem" }}>
-              <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase" }}>
+              <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase", textAlign: isMobile ? "right" : "left" }}>
                 {c.contact}
               </h2>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start", flexDirection: isMobile ? "column" : "row", gap: isMobile ? "2.5rem" : 0 }}>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: isMobile ? undefined : "space-between", alignItems: isMobile ? "flex-end" : "flex-start", flexWrap: isMobile ? undefined : "wrap", gap: isMobile ? "2.5rem" : 0 }}>
 
-              {/* Left — contact links */}
-              <div ref={contactLinksTeRef} style={{ minWidth: "220px" }}>
-                <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem" }}>
+              {/* contact links */}
+              <div ref={contactLinksTeRef} style={{ minWidth: isMobile ? undefined : "220px" }}>
+                <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)", fontWeight: 500, color: "#000", letterSpacing: "0.02em", marginBottom: "2rem", textAlign: isMobile ? "right" : "left" }}>
                   Boelie van Camp
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
@@ -1088,7 +1234,7 @@ export default function Home() {
                     { label: "instagram", href: "https://www.instagram.com/boelie36/", text: "@boelie36" },
                     { label: "github", href: "https://github.com/ATTAlogical", text: "ATTAlogical" },
                   ].map(({ label, href, text }) => (
-                    <div key={label} style={{ display: "flex", gap: "2rem", alignItems: "baseline" }}>
+                    <div key={label} style={{ display: "flex", flexDirection: isMobile ? "row-reverse" : "row", gap: "2rem", alignItems: "baseline" }}>
                       <span style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.3)", width: "5rem", textTransform: "uppercase", flexShrink: 0 }}>{label}</span>
                       <a href={href} target={label !== "email" ? "_blank" : undefined} rel="noreferrer"
                         style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
@@ -1100,12 +1246,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Right — bio */}
-              <div ref={bioTeRef} style={{ maxWidth: isMobile ? "100%" : "380px" }}>
+              {/* bio */}
+              <div ref={bioTeRef} style={{ maxWidth: isMobile ? "100%" : "380px", textAlign: isMobile ? "right" : "left" }}>
                 <p style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.6)", lineHeight: 1.9, marginBottom: "2rem", letterSpacing: "0.02em" }}>
                   {c.bio}
                 </p>
-                <p style={{ fontSize: "clamp(0.75rem, 1vw, 0.88rem)", color: "rgba(0,0,0,0.35)", lineHeight: 1.8, fontStyle: "italic", letterSpacing: "0.03em", borderLeft: "1px solid rgba(0,0,0,0.1)", paddingLeft: "1.2em" }}>
+                <p style={{ fontSize: "clamp(0.75rem, 1vw, 0.88rem)", color: "rgba(0,0,0,0.35)", lineHeight: 1.8, fontStyle: "italic", letterSpacing: "0.03em", borderLeft: isMobile ? "none" : "1px solid rgba(0,0,0,0.1)", borderRight: isMobile ? "1px solid rgba(0,0,0,0.1)" : "none", paddingLeft: isMobile ? 0 : "1.2em", paddingRight: isMobile ? "1.2em" : 0 }}>
                   "{c.bioQuote}"
                 </p>
               </div>
@@ -1159,6 +1305,7 @@ export default function Home() {
                       isExpanded={expandedProject?.title === project.title}
                       onExpand={setExpandedProject}
                       isMobile={isMobile}
+                      lang={lang}
                     />
                   </motion.div>
                 ))}
@@ -1175,11 +1322,119 @@ export default function Home() {
           <ProjectExpanded
             key={expandedProject.title}
             project={expandedProject}
-            onClose={() => setExpandedProject(null)}
+            onClose={handleClosePopup}
             isMobile={isMobile}
+            lang={lang}
           />
         )}
       </AnimatePresence>
+
+      {/* ── YOU'RE DONE ── */}
+      <AnimatePresence>
+        {showYoureDone && (
+          <motion.div
+            key="youre-done"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: "easeIn" }}
+            style={{
+              position: "fixed", inset: 0,
+              background: "#000",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", userSelect: "none" }}>
+              {/* Main text */}
+              <span style={{
+                display: "block",
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(2.5rem, 9vw, 6rem)",
+                letterSpacing: "0.06em",
+                fontWeight: 500,
+                background: "linear-gradient(180deg, #ffffff 0%, #dddddd 40%, #888888 80%, #666666 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                filter: "drop-shadow(0 1px 3px rgba(255,255,255,0.15))",
+              }}>
+                You&apos;re done
+              </span>
+              {/* Reflection */}
+              <span aria-hidden style={{
+                display: "block",
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(2.5rem, 9vw, 6rem)",
+                letterSpacing: "0.06em",
+                fontWeight: 500,
+                background: "linear-gradient(180deg, #666666 0%, #333333 40%, transparent 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                transform: "scaleY(-1)",
+                marginTop: "-0.05em",
+                opacity: 0.45,
+                pointerEvents: "none",
+              }}>
+                You&apos;re done
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── LANGUAGE TOGGLE ── */}
+      <div style={{
+        position: "fixed",
+        ...(isMobile
+          ? { top: "max(1.5rem, env(safe-area-inset-top, 1.5rem))", left: "max(1.5rem, env(safe-area-inset-left, 1.5rem))" }
+          : { bottom: "max(2rem, env(safe-area-inset-bottom, 2rem))", left: "max(2rem, env(safe-area-inset-left, 2rem))" }
+        ),
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
+        zIndex: 100,
+      }}>
+        <motion.button
+          onClick={() => setLang(l => l === "en" ? "nl" : "en")}
+          whileHover={{ scale: 1.07 }}
+          whileTap={{ scale: 0.91 }}
+          style={{
+            width: "3.1rem", height: "3.1rem",
+            borderRadius: "50%",
+            background: "linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(235,236,240,0.88) 100%)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1.5px solid rgba(255,255,255,0.75)",
+            boxShadow: [
+              "0 6px 22px rgba(0,0,0,0.13)",
+              "0 2px 6px rgba(0,0,0,0.08)",
+              "inset 0 0 0 1px rgba(0,0,0,0.07)",
+              "inset 0 2.5px 0 rgba(255,255,255,1)",
+              "inset 0 -2.5px 0 rgba(0,0,0,0.14)",
+              "inset 2px 0 0 rgba(255,255,255,0.45)",
+              "inset -2px 0 0 rgba(0,0,0,0.05)",
+            ].join(", "),
+            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "rgba(0,0,0,0.5)",
+            padding: 0,
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.3rem", height: "1.3rem" }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+        </motion.button>
+        <span style={{
+          fontSize: "0.52rem", letterSpacing: "0.14em",
+          color: "rgba(0,0,0,0.28)", textTransform: "uppercase",
+          fontFamily: '"Playfair Display", serif',
+          userSelect: "none",
+        }}>
+          {lang}
+        </span>
+      </div>
     </main>
   );
 }

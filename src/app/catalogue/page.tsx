@@ -63,9 +63,9 @@ const ProjectSection = memo(function ProjectSection({
   ];
   const hasImages = allImages.length > 0;
 
-  const imgW = isMobile ? "clamp(260px, 83vw, 820px)" : "clamp(340px, 52vw, 820px)";
-  const imgH = isMobile ? "52vh" : "64vh";
-  const gap = isMobile ? "1.5rem" : "5rem";
+  const imgW = isMobile ? "clamp(280px, 88vw, 820px)" : "clamp(340px, 52vw, 820px)";
+  const imgH = isMobile ? "auto" : "64vh";
+  const gap = isMobile ? "2.5rem" : "5rem";
   const pad = isMobile ? "5vw" : "8vw";
 
   return (
@@ -93,6 +93,7 @@ const ProjectSection = memo(function ProjectSection({
           style={{
             x: dragX,
             display: "inline-flex",
+            alignItems: isMobile ? "flex-start" : undefined,
             gap,
             paddingLeft: pad,
             paddingRight: pad,
@@ -111,7 +112,7 @@ const ProjectSection = memo(function ProjectSection({
                     alt={`${project.title} — ${i === 0 ? "cover" : i}`}
                     loading={isFirst && i === 0 ? "eager" : "lazy"}
                     decoding="async"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    style={{ width: "100%", height: isMobile ? "auto" : "100%", objectFit: isMobile ? undefined : "cover", display: "block" }}
                     draggable={false}
                   />
                 </div>
@@ -135,11 +136,11 @@ const ProjectSection = memo(function ProjectSection({
           WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.38) 30%, transparent 100%)",
           maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.38) 30%, transparent 100%)",
         }}>
-          <motion.div style={{ x: dragX, scaleY: -1, display: "inline-flex", gap, paddingLeft: pad, paddingRight: pad, minWidth: "100%", willChange: "transform" }}>
+          <motion.div style={{ x: dragX, scaleY: -1, display: "inline-flex", alignItems: isMobile ? "flex-start" : undefined, gap, paddingLeft: pad, paddingRight: pad, minWidth: "100%", willChange: "transform" }}>
             {hasImages
               ? allImages.map((src, i) => (
                   <div key={i} style={{ flexShrink: 0, width: imgW, height: imgH, borderRadius: "20px", overflow: "hidden", background: "#e0e0e2" }}>
-                    <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} draggable={false} />
+                    <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" style={{ width: "100%", height: isMobile ? "auto" : "100%", objectFit: isMobile ? undefined : "cover", display: "block" }} draggable={false} />
                   </div>
                 ))
               : <div style={{ flexShrink: 0, width: imgW, height: imgH, borderRadius: "20px", background: "linear-gradient(135deg, #f0f0f0, #e6e6e8)" }} />}

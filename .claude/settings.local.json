@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git add *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(cmd /c start \"\" \"vscode://vscode.simpleBrowser/show?url=http%3A%2F%2Flocalhost%3A3000\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\bilag\\.claude\\projects\\c--Users-bilag-ATTA-logical-attalogical-site\\memory",

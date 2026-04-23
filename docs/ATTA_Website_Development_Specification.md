@@ -376,6 +376,17 @@ Image naming convention:
 
 ## 7. DEVELOPMENT PHASES
 
+### Status at a Glance
+
+| Phase | Name | Status |
+|-------|------|--------|
+| 1 | Foundation | ✅ COMPLETE |
+| 2 | Content Integration + Mobile | ✅ COMPLETE |
+| 3 | Brand Expansion (Laugical + CKORE) | ⬜ PLANNED — blocked on mockups |
+| 4 | Refinement | 🔄 IN PROGRESS — copy review pending |
+
+---
+
 ### 7.1 Phase 1: Foundation ✅ COMPLETE
 - Temporal evolution engine (3-day sine wave, single rAF loop)
 - Glass effects + reflections
@@ -383,7 +394,9 @@ Image naming convention:
 - Floating chip system with SVG path-draw animations
 - atta logical landing page
 
-### 7.2 Phase 2: Content Integration ✅ COMPLETE
+### 7.2 Phase 2: Content Integration + Mobile ✅ COMPLETE
+
+#### Core
 - Work Experience section (Stichting Asha)
 - Contact section with bio
 - Projects section — drag-to-scroll cards, 3D tilt, FLIP popup
@@ -396,29 +409,35 @@ Image naming convention:
 - Popup scroll fixed + FLIP animation de-lagged
 - Catalogue performance: stable `useCallback` refs, lazy image loading, GPU-composited maskImage
 - Per-project pages (`/projects/[slug]`) stubbed for future use
+- Vercel Analytics wired up (`@vercel/analytics/next` in root layout)
 
-### 7.2.1 Phase 2 Mobile Addendum ✅ COMPLETE
+#### Mobile
 - `useIsMobile` hook (`src/hooks/useIsMobile.ts`) — uses `matchMedia`, fires only on breakpoint crosses, desktop-first init (no SSR mismatch)
 - `viewport-fit=cover` meta tag in layout — enables `env(safe-area-inset-*)` on iPhone
-- **Catalogue mobile**: images `83vw` wide (immersive, single-image-per-screen feel with peek of next); compact bottom panel (title + 2 tags + link in one row); `touchAction: pan-y` on drag row; safe-area-inset padding on bottom panel
-- **Homepage popup mobile**: native bottom sheet (`92dvh`, `border-radius: 20px 20px 0 0`, `border-bottom: none`); spring slide-up animation; drag handle; swipe-down to dismiss (velocity >400 or offset >120px); `layoutId` disabled on mobile card (no orphaned FLIP animation)
-- **Homepage extended sections**: stacked single column; reduced padding (`12vw 6vw`); contact columns stack vertically; bio block goes full-width
-- **`PopupContent`** extracted as shared component — used by both desktop FLIP popup and mobile bottom sheet
+- **Catalogue**: images `83vw` wide (immersive, single-image-per-screen feel with peek of next); compact bottom panel (title + 2 tags + link in one row); `touchAction: pan-y` on drag row; safe-area-inset padding on bottom panel
+- **Homepage popup**: native bottom sheet (`92dvh`, `border-radius: 20px 20px 0 0`); spring slide-up; drag handle; swipe-down to dismiss (velocity >400 or offset >120px); `layoutId` disabled on mobile card (no orphaned FLIP)
+- **Homepage extended sections**: stacked single column; reduced padding (`12vw 6vw`); contact columns stack vertically; bio block full-width
+- `PopupContent` extracted as shared component — used by both desktop FLIP popup and mobile bottom sheet
 
-### 7.3 Phase 3: Brand Expansion
-- **Goal**: Launch ATTA Laugical and ATTA.CKORE
+### 7.3 Phase 3: Brand Expansion ⬜ PLANNED
+**Status**: Blocked — waiting on Laugical and CKORE mockups.
+
+- **Goal**: Launch ATTA Laugical and ATTA.CKORE as distinct brand experiences
 - **Deliverables**:
   - Laugical artistic interface — own search, own contact, progressive loading
   - CKORE music platform — own search, own contact, releases, shop
-  - Cross-brand chip navigation
+  - Cross-brand chip navigation (Laugical chip → Laugical, CKORE chip → CKORE)
 
-### 7.4 Phase 4: Refinement
-- **Goal**: Polish and optimization
-- **Deliverables**:
-  - Mobile responsiveness
-  - Advanced temporal variations
-  - Analytics implementation
-  - Launch preparation
+### 7.4 Phase 4: Refinement 🔄 IN PROGRESS
+**Status**: Site is live. Remaining items below.
+
+- **Remaining**:
+  - Copy review — all body text, bio, job descriptions
+  - Advanced temporal variations (per-brand TE expressions)
+- **Complete**:
+  - ~~Mobile responsiveness~~ — done in Phase 2
+  - ~~Analytics implementation~~ — Vercel Analytics live
+  - ~~Domain + Vercel config~~ — site is live at attalogical.com
 
 ---
 
@@ -482,8 +501,8 @@ Image naming convention:
 - [x] Project data (AshaOS, ATTA logical, Follow-AI) wired up
 - [x] Catalogue with scroll detection + bottom panel
 - [x] Mobile responsiveness
-- [ ] Analytics tracking
-- [ ] Domain SSL and Vercel config finalized
+- [x] Analytics tracking (Vercel Analytics — `@vercel/analytics/next`)
+- [x] Domain SSL and Vercel config finalized — site live at attalogical.com
 - [ ] Copy review complete
 
 ---
@@ -515,4 +534,4 @@ Avoid design clichés, especially overused "AI aesthetics". Create recognition t
 
 ---
 
-**Document version 2.2 — Updated April 2026 to reflect mobile responsiveness completion**
+**Document version 2.3 — Updated April 2026 to reflect site launch, analytics live, phase status clarified**
