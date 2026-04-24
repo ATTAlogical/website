@@ -177,16 +177,14 @@ export default function Catalogue() {
 
       {/* Top nav */}
       <div style={{
-        position: "sticky", top: 0, zIndex: 10,
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        background: "rgba(247,247,247,0.88)", borderBottom: "1px solid rgba(0,0,0,0.05)",
-        padding: isMobile ? "0.9rem 5vw" : "1.2rem 8vw",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: isMobile ? "32px 5vw 0" : "48px 8vw 0",
+        fontFamily: "var(--font-geist-mono), ui-monospace, Menlo, monospace",
+        fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
+        color: "rgba(0,0,0,0.35)",
       }}>
-        <Link href="/" className="catalogue-back-link" style={{ fontSize: "0.62rem", letterSpacing: "0.14em", textDecoration: "none", textTransform: "uppercase" }}>
-          ← ATTA logical
-        </Link>
-        <span style={{ fontSize: "0.62rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase" }}>catalogue</span>
+        <Link href="/?extended=true" className="sub-back">← ATTA logical</Link>
+        <span>ATTA·CAT·2026</span>
       </div>
 
       {PROJECTS_DATA.map((project, i) => (

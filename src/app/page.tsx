@@ -574,6 +574,11 @@ export default function Home() {
   const [seriouslyCount, setSeriouslyCount] = useState(0);
   const [showYoureDone, setShowYoureDone] = useState(false);
   const [contactClicks, setContactClicks] = useState(0);
+  const [contactFormOpen, setContactFormOpen] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [formSubmitted, setFormSubmitted] = useState(false);
   const [lang, setLang] = useState<"en" | "nl">("en");
   const [showExtended, setShowExtended] = useState(false);
   const [scrollToContact, setScrollToContact] = useState(false);
@@ -605,6 +610,14 @@ export default function Home() {
   }, []);
 
   const handleClosePopup = useCallback(() => setExpandedProject(null), []);
+
+  function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const subject = "Enquiry via ATTAlogical";
+    const body = `Name: ${formName}\nEmail: ${formEmail}\n\n${formMessage}`;
+    window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setFormSubmitted(true);
+  }
 
   const goToContact = useCallback(() => {
     setShowExtended(true);
@@ -642,7 +655,12 @@ export default function Home() {
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
   useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    if (new URLSearchParams(window.location.search).get("extended") === "true") {
+      setShowExtended(true);
+    }
+  }, []);
 
   // Measure drag constraint for card row once extended sections are visible
   useEffect(() => {
@@ -1257,6 +1275,82 @@ export default function Home() {
               </div>
 
             </div>
+
+            {/* Contact form */}
+            <div style={{ marginTop: "4rem", borderTop: "0.5px solid rgba(0,0,0,0.08)", paddingTop: "2.5rem" }}>
+              <button
+                className="sub-contact-trigger"
+                onClick={() => { setContactFormOpen(o => !o); setFormSubmitted(false); }}
+              >
+                {c.contactHeading}
+                <span className="sub-contact-trigger-icon">{contactFormOpen ? "−" : "+"}</span>
+              </button>
+              <AnimatePresence>
+                {contactFormOpen && (
+                  <motion.div
+                    key="contact-form"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    {formSubmitted ? (
+                      <div className="sub-contact-thanks">
+                        <p className="sub-contact-thanks-title">Message sent.</p>
+                        <p className="sub-contact-thanks-note">Your email client should have opened. If not, write to Boelie@attalogical.com directly.</p>
+                      </div>
+                    ) : (
+                      <form className="sub-contact-form" onSubmit={handleContactFormSubmit}>
+                        <div className="sub-contact-row">
+                          <label className="sub-contact-label">Name</label>
+                          <input className="sub-contact-input" type="text" required autoComplete="name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Your name" />
+                        </div>
+                        <div className="sub-contact-row">
+                          <label className="sub-contact-label">Email</label>
+                          <input className="sub-contact-input" type="email" required autoComplete="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="your@email.com" />
+                        </div>
+                        <div className="sub-contact-row">
+                          <label className="sub-contact-label">Message</label>
+                          <textarea className="sub-contact-textarea" required rows={5} value={formMessage} onChange={e => setFormMessage(e.target.value)} placeholder="What can I help you with?" />
+                        </div>
+                        <button type="submit" className="sub-contact-send">Send message</button>
+                      </form>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </section>
+
+          {/* Subscriptions CTA */}
+          <section style={{ padding: isMobile ? "10vw 6vw" : "6vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: "1.5rem" }}>
+            <div>
+              <p style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.18em", color: "rgba(0,0,0,0.3)", textTransform: "uppercase", marginBottom: "0.55rem", fontFamily: '"Playfair Display", serif' }}>
+                § Subscriptiones
+              </p>
+              <p style={{ fontSize: "clamp(0.85rem, 1.2vw, 1rem)", color: "rgba(0,0,0,0.55)", letterSpacing: "0.02em", fontFamily: '"Playfair Display", serif' }}>
+                Ongoing maintenance & development, at a rhythm you choose.
+              </p>
+            </div>
+            <Link href="/subscriptions" style={{
+              flexShrink: 0,
+              display: "inline-block",
+              padding: "0.65em 1.6em",
+              border: "1px solid rgba(0,0,0,0.18)",
+              borderRadius: "4px",
+              fontFamily: '"Playfair Display", serif',
+              fontSize: "clamp(0.7rem, 0.95vw, 0.82rem)",
+              letterSpacing: "0.12em",
+              color: "rgba(0,0,0,0.6)",
+              textDecoration: "none",
+              transition: "border-color 0.2s, color 0.2s",
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(0,0,0,0.5)"; (e.currentTarget as HTMLAnchorElement).style.color = "#000"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(0,0,0,0.18)"; (e.currentTarget as HTMLAnchorElement).style.color = "rgba(0,0,0,0.6)"; }}
+            >
+              View subscriptions →
+            </Link>
           </section>
 
           {/* Projects */}
@@ -1393,7 +1487,9 @@ export default function Home() {
         ),
         display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
         zIndex: 100,
+
       }}>
+
         <motion.button
           onClick={() => setLang(l => l === "en" ? "nl" : "en")}
           whileHover={{ scale: 1.07 }}

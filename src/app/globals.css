@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+
 :root {
   --background: #ffffff;
   --foreground: #000000;
@@ -160,4 +161,167 @@ body::after {
   );
   pointer-events: none;
   z-index: 3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBSCRIPTIONS PAGE
+   ═══════════════════════════════════════════════════════════════ */
+
+.sub-page { max-width: 1280px; margin: 0 auto; padding: 0 clamp(32px, 5vw, 80px) 96px; }
+
+/* nav */
+.sub-back { color: rgba(0,0,0,0.4); text-decoration: none; transition: color 0.2s; }
+.sub-back:hover { color: #000; }
+
+/* hero */
+.sub-hero-center { margin-top: 120px; text-align: center; padding-bottom: 96px; }
+.sub-hero-kicker { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.45); letter-spacing: 0.02em; margin-bottom: 24px; }
+.sub-hero-title { font-family: "Playfair Display", serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 440; letter-spacing: 0.02em; line-height: 1.1; margin: 0; padding-bottom: 0.15em; user-select: none; }
+.sub-hero-reflection { margin-top: -0.1em; opacity: 0.18; transform: scaleY(-0.85) translateY(0.2rem); filter: blur(1.5px); font-family: "Playfair Display", serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 440; letter-spacing: 0.02em; line-height: 1.1; pointer-events: none; }
+.sub-hero-lead { margin: 56px auto 0; max-width: 540px; font-family: "Playfair Display", serif; font-size: 17px; line-height: 1.75; color: rgba(0,0,0,0.58); letter-spacing: 0.01em; }
+
+/* tier card */
+.tier-card {
+  position: relative;
+  background: #fff;
+  border: 1.5px solid rgba(255,255,255,0.72);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.07);
+  border-radius: 10px;
+  padding: 18px 18px 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+/* glass bevel overlay — inset shadows stay inside the border */
+.tier-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.09),
+    inset 0  3px 0 rgba(255,255,255,0.95),
+    inset 0 -3px 0 rgba(0,0,0,0.13),
+    inset  3px 0 0 rgba(255,255,255,0.28),
+    inset -3px 0 0 rgba(0,0,0,0.06);
+  pointer-events: none;
+  z-index: 4;
+}
+/* top specular line + bottom shadow — only the 3px edges, nothing in between */
+.tier-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,1)   0px,
+    rgba(255,255,255,0)   3px,
+    transparent           3px,
+    transparent           calc(100% - 3px),
+    rgba(0,0,0,0.10)      calc(100% - 3px),
+    rgba(0,0,0,0.14)      100%
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+.tier-head { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px; }
+.tier-index { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.08em; color: rgba(0,0,0,0.3); }
+.tier-pips { display: inline-flex; gap: 5px; }
+.pip { width: 5px; height: 5px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.18); background: transparent; }
+.pip-on { background: #000; border-color: #000; }
+.tier-label-block { position: relative; z-index: 1; margin-bottom: 28px; }
+.tier-label { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #000; font-weight: 500; }
+.tier-latin { margin-top: 4px; font-family: "Playfair Display", serif; font-style: italic; font-size: 12px; color: rgba(0,0,0,0.48); }
+.tier-price-block { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 6px; margin-top: auto; margin-bottom: 14px; }
+.tier-price { font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif; font-size: 48px; font-weight: 300; letter-spacing: -0.02em; color: #000; line-height: 1; }
+.tier-cadence { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(0,0,0,0.35); }
+
+/* taxonomy plate */
+.sub-plate-wrap { margin: 0 auto 120px; }
+.sub-plate-border { border: 0.5px solid rgba(0,0,0,0.1); padding: 48px 56px 56px; background: #fff; box-shadow: 0 2px 30px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02); }
+.sub-plate-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
+.sub-plate-family { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(0,0,0,0.35); margin-bottom: 10px; }
+.sub-plate-species { font-family: "Playfair Display", serif; font-style: italic; font-size: 22px; color: #000; }
+.sub-plate-title-r { text-align: right; }
+.sub-plate-no { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(0,0,0,0.35); }
+.sub-plate-no-big { font-family: "Playfair Display", serif; font-size: 36px; color: #000; line-height: 1; margin-top: 4px; font-weight: 500; }
+.sub-plate-rule { margin: 28px 0; border: none; border-top: 0.5px solid rgba(0,0,0,0.1); }
+.sub-plate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; }
+.sub-plate-cell { display: flex; flex-direction: column; gap: 14px; }
+.sub-plate-cell-head { display: flex; align-items: center; gap: 14px; }
+.sub-plate-cell-roman { font-family: "Playfair Display", serif; font-size: 18px; color: #000; min-width: 26px; font-weight: 500; }
+.sub-plate-cell-sep { flex: 1; height: 0; border-top: 0.5px solid rgba(0,0,0,0.1); }
+.sub-plate-cell-latin { font-family: "Playfair Display", serif; font-style: italic; font-size: 13px; color: rgba(0,0,0,0.48); }
+.sub-plate-cell-body { display: flex; justify-content: center; }
+.sub-plate-foot-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
+.sub-plate-foot-k { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(0,0,0,0.32); margin-bottom: 4px; }
+.sub-plate-foot-v { font-family: "Playfair Display", serif; font-size: 14px; color: rgba(0,0,0,0.65); }
+
+/* scope & rules */
+.sub-scope, .sub-rules { padding: 0 clamp(8px, 2vw, 32px); margin-bottom: 120px; }
+.sub-section-head { border-top: 0.5px solid rgba(0,0,0,0.12); padding-top: 24px; margin-bottom: 56px; display: flex; justify-content: space-between; align-items: baseline; gap: 32px; flex-wrap: wrap; }
+.sub-section-kicker { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,0,0,0.45); }
+.sub-section-title { font-family: "Playfair Display", serif; font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 400; letter-spacing: -0.005em; color: #000; margin: 0; }
+.sub-scope-grid { display: flex; flex-direction: column; }
+.sub-scope-row { display: grid; grid-template-columns: 320px 1fr; gap: 56px; padding: 40px 0; border-top: 0.5px solid rgba(0,0,0,0.08); }
+.sub-scope-row:last-child { border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+.sub-scope-row-l { position: sticky; top: 24px; align-self: start; }
+.sub-scope-row-mono { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.12em; color: rgba(0,0,0,0.4); display: flex; gap: 8px; margin-bottom: 16px; }
+.sub-scope-row-label { font-family: "Playfair Display", serif; font-size: 32px; font-weight: 500; color: #000; letter-spacing: 0.005em; line-height: 1; }
+.sub-scope-row-latin { font-family: "Playfair Display", serif; font-style: italic; font-size: 16px; color: rgba(0,0,0,0.45); margin-top: 10px; }
+.sub-scope-row-r { padding-top: 4px; }
+.sub-scope-forwhom { font-family: "Playfair Display", serif; font-size: 20px; line-height: 1.55; color: #000; margin: 0 0 28px; max-width: 540px; }
+.sub-scope-included { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; }
+.sub-scope-included li { font-family: "Playfair Display", serif; font-size: 15px; line-height: 1.6; color: rgba(0,0,0,0.62); display: flex; gap: 14px; }
+.sub-scope-dash { color: rgba(0,0,0,0.28); flex-shrink: 0; }
+.sub-scope-billed { font-family: "Playfair Display", serif; font-style: italic; font-size: 14px; line-height: 1.7; color: rgba(0,0,0,0.48); margin: 0; padding-top: 16px; border-top: 0.5px dashed rgba(0,0,0,0.1); max-width: 540px; }
+.sub-rules-list { display: grid; grid-template-columns: repeat(2, 1fr); margin: 0; padding: 0; border-top: 0.5px solid rgba(0,0,0,0.08); list-style: none; }
+.sub-rules-row { padding: 24px 0 24px 28px; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+.sub-rules-row:nth-child(odd) { padding-left: 0; padding-right: 28px; border-right: 0.5px solid rgba(0,0,0,0.08); }
+.sub-rules-row dt { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: 8px; }
+.sub-rules-row dd { font-family: "Playfair Display", serif; font-size: 15px; line-height: 1.65; color: rgba(0,0,0,0.72); margin: 0; max-width: 440px; }
+
+/* footer */
+.sub-footer { border-top: 0.5px solid rgba(0,0,0,0.12); padding: 48px clamp(8px, 2vw, 32px) 0; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+.sub-footer-kicker { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: 20px; }
+.sub-footer-email { font-family: "Playfair Display", serif; font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 500; letter-spacing: 0.005em; text-decoration: none; display: inline-block; padding-bottom: 4px; border-bottom: 0.5px solid rgba(0,0,0,0.2); transition: border-color 0.2s; }
+.sub-footer-email:hover { border-bottom-color: #000; }
+.sub-footer-note { margin: 20px 0 0; font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; line-height: 1.65; color: rgba(0,0,0,0.5); max-width: 360px; }
+.sub-footer-r { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 48px; justify-self: end; }
+.sub-footer-meta { display: flex; flex-direction: column; gap: 4px; }
+.sub-footer-meta span:first-child { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,0,0,0.35); }
+.sub-footer-meta span:last-child { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.7); }
+
+/* contact form */
+.sub-contact { padding: 64px clamp(8px, 2vw, 32px) 96px; overflow: hidden; }
+.sub-contact-trigger { background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: 20px; transition: color 0.2s; }
+.sub-contact-trigger:hover { color: #000; }
+.sub-contact-trigger-icon { font-size: 16px; line-height: 1; font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; }
+.sub-contact-form { max-width: 560px; display: flex; flex-direction: column; }
+.sub-contact-row { display: flex; flex-direction: column; gap: 8px; padding: 22px 0; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+.sub-contact-label { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,0,0,0.38); }
+.sub-contact-input, .sub-contact-textarea, .sub-contact-select { font-family: "Playfair Display", serif; font-size: 16px; color: #000; background: transparent; border: none; outline: none; padding: 0; width: 100%; line-height: 1.5; }
+.sub-contact-input::placeholder, .sub-contact-textarea::placeholder { color: rgba(0,0,0,0.22); }
+.sub-contact-select { font-size: 15px; color: rgba(0,0,0,0.65); cursor: pointer; -webkit-appearance: none; appearance: none; }
+.sub-contact-textarea { resize: none; line-height: 1.75; }
+.sub-contact-send { margin-top: 36px; align-self: flex-start; font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #fff; background: #000; border: none; padding: 14px 32px; cursor: pointer; transition: opacity 0.2s; border-radius: 2px; }
+.sub-contact-send:hover { opacity: 0.7; }
+.sub-contact-thanks { padding: 32px 0; }
+.sub-contact-thanks-title { font-family: "Playfair Display", serif; font-size: 28px; color: #000; margin: 0 0 14px; }
+.sub-contact-thanks-note { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.5); margin: 0; max-width: 440px; line-height: 1.7; }
+
+@media (max-width: 900px) {
+  .sub-plate-grid { grid-template-columns: 1fr; }
+  .sub-plate-border { padding: 28px 20px 36px; }
+  .sub-plate-foot-row { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .sub-scope-row { grid-template-columns: 1fr; gap: 24px; }
+  .sub-scope-row-l { position: static; }
+  .sub-rules-list { grid-template-columns: 1fr; }
+  .sub-rules-row { padding-left: 0; border-right: none !important; }
+  .sub-rules-row:nth-child(odd) { padding-right: 0; }
+  .sub-footer { grid-template-columns: 1fr; }
+  .sub-footer-r { justify-self: start; }
 }

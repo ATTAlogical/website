@@ -1,0 +1,489 @@
+/* ATTA — subscription cards
+   Two identities in one surface: clinical structure, organic intrusion.
+   ──────────────────────────────────────────────────────────────────── */
+
+:root {
+  --atta-surface: #ffffff;
+  --atta-surface-2: #fbfbfa;
+  --atta-ink: #1a1a1a;
+  --atta-ink-soft: #5a5a58;
+  --atta-ink-mute: #8a8a87;
+  --atta-hair: rgba(26, 26, 26, 0.14);
+  --atta-hair-soft: rgba(26, 26, 26, 0.08);
+  --atta-green: #3a6732;
+  --atta-green-soft: #6a9060;
+
+  --hair: 0.5px solid var(--atta-hair);
+  --hair-soft: 0.5px solid var(--atta-hair-soft);
+
+  --serif: 'Prata', 'Georgia', serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--atta-surface-2);
+  color: var(--atta-ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reusable label style per brief: 10–11px, 0.2em tracking, uppercase, muted */
+.label {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+  font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────────────
+   Artboard surface — shared for all layouts
+   ────────────────────────────────────────────────────── */
+
+.artboard-surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--atta-surface);
+  padding: 56px 64px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ──────────────────────────────────────────────────────
+   Tier card — the canonical specimen card
+   ────────────────────────────────────────────────────── */
+
+.tier-card {
+  position: relative;
+  background: var(--atta-surface);
+  border: var(--hair);
+  border-radius: 10px;
+  padding: 26px 24px 28px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+/* Botanical PNG — bleeds past bottom-right corner, behind text */
+.tier-plant {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+.tier-plant img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: bottom right;
+}
+
+/* Top row: index + pips */
+.tier-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 56px;
+}
+.tier-index {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--atta-ink-mute);
+}
+.tier-pips {
+  display: inline-flex;
+  gap: 5px;
+}
+.pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 0.5px solid var(--atta-hair);
+  background: transparent;
+}
+.pip-on {
+  background: var(--atta-green);
+  border-color: var(--atta-green);
+}
+
+/* Specimen label block */
+.tier-label-block {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 44px;
+}
+.tier-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--atta-ink);
+  font-weight: 500;
+}
+.tier-latin {
+  margin-top: 4px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--atta-ink-soft);
+  font-weight: 400;
+}
+
+/* Price block */
+.tier-price-block {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: auto;
+  margin-bottom: 14px;
+}
+.tier-price {
+  font-family: var(--serif);
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--atta-ink);
+  line-height: 1;
+}
+.tier-cadence {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+}
+
+/* Descriptor — a single poetic fragment */
+.tier-descriptor {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding-top: 14px;
+  border-top: var(--hair-soft);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--atta-ink-soft);
+  max-width: 80%;
+}
+
+/* ──────────────────────────────────────────────────────
+   Layout A — Horizontal row
+   ────────────────────────────────────────────────────── */
+
+.layout-row { justify-content: space-between; }
+
+.plate-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 24px;
+  border-bottom: var(--hair);
+}
+.meta-kicker {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+  margin-bottom: 10px;
+}
+.meta-title {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  color: var(--atta-ink);
+}
+.meta-r { text-align: right; }
+.meta-small {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--atta-ink-mute);
+  letter-spacing: 0.04em;
+  line-height: 1.7;
+}
+
+.row-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  align-items: stretch;
+  flex: 1;
+  align-content: center;
+}
+.row-grid .tier-card { width: 100%; height: 100%; }
+
+.plate-foot {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: var(--hair);
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+}
+
+/* ──────────────────────────────────────────────────────
+   Layout B — Asymmetric stagger
+   ────────────────────────────────────────────────────── */
+
+.layout-stagger {
+  padding: 48px 72px 56px;
+}
+.stagger-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  max-width: 100%;
+  margin-bottom: 40px;
+}
+.stagger-kicker {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+  flex: 0 0 auto;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--atta-ink);
+  min-width: 220px;
+}
+.stagger-lead {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--atta-ink);
+  max-width: 420px;
+  text-align: right;
+}
+
+.stagger-rail {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  align-items: start;
+  padding-top: 20px;
+}
+/* A hairline that runs under the rail, visually anchoring the stagger */
+.stagger-rail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 120px;
+  height: 0;
+  border-top: var(--hair-soft);
+  z-index: 0;
+}
+
+.stagger-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+.stagger-caption {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding-top: 10px;
+  border-top: var(--hair-soft);
+}
+.stagger-caption-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--atta-ink-mute);
+  letter-spacing: 0.08em;
+}
+.stagger-caption-txt {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--atta-ink-soft);
+}
+
+.stagger-foot {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: var(--hair);
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+}
+
+/* ──────────────────────────────────────────────────────
+   Layout C — Taxonomy plate (2x2)
+   ────────────────────────────────────────────────────── */
+
+.layout-plate {
+  padding: 40px;
+  background: var(--atta-surface-2);
+}
+.plate-border {
+  flex: 1;
+  background: var(--atta-surface);
+  border: var(--hair);
+  padding: 44px 52px;
+  display: flex;
+  flex-direction: column;
+}
+.plate-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.plate-family {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+  margin-bottom: 10px;
+}
+.plate-species {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--atta-ink);
+  font-weight: 400;
+}
+.plate-title-r { text-align: right; }
+.plate-no {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+}
+.plate-no-big {
+  font-family: var(--serif);
+  font-size: 36px;
+  color: var(--atta-ink);
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.plate-rule {
+  margin: 28px 0;
+  border-top: var(--hair);
+}
+
+.plate-grid {
+  flex: 1;
+  display: grid;
+  /* Columns sized for the widest (Tropical) card; cards align top-left in each cell */
+  grid-template-columns: 420px 420px;
+  justify-content: space-between;
+  gap: 40px 40px;
+}
+.plate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.plate-cell-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.plate-cell-roman {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--atta-ink);
+  min-width: 26px;
+}
+.plate-cell-sep {
+  flex: 1;
+  height: 0;
+  border-top: var(--hair);
+}
+.plate-cell-latin {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--atta-ink-soft);
+}
+.plate-cell-body {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.plate-footer-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+}
+.plate-foot-col { }
+.plate-foot-k {
+  font-family: var(--sans);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--atta-ink-mute);
+  margin-bottom: 4px;
+}
+.plate-foot-v {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--atta-ink);
+}
+
+/* ──────────────────────────────────────────────────────
+   Layout D — Canonical close-up
+   ────────────────────────────────────────────────────── */
+
+.layout-closeup {
+  padding: 40px 56px;
+  justify-content: center;
+}
+.closeup-stage {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.closeup-marginalia {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--atta-ink-mute);
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+}
+.closeup-tl { top: 40px; left: 56px; }
+.closeup-tr { top: 40px; right: 56px; text-align: right; }
+.closeup-bl { bottom: 40px; left: 56px; }
+.closeup-br { bottom: 40px; right: 56px; text-align: right; }
+.closeup-marginalia .meta-kicker { margin-bottom: 4px; }
+.closeup-marginalia .meta-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--atta-ink);
+  margin-bottom: 0;
+}

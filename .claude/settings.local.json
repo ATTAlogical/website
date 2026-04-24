@@ -3,11 +3,17 @@
     "allow": [
       "Bash(git add *)",
       "Bash(npx tsc *)",
-      "Bash(cmd /c start \"\" \"vscode://vscode.simpleBrowser/show?url=http%3A%2F%2Flocalhost%3A3000\")"
+      "Bash(cmd /c start \"\" \"vscode://vscode.simpleBrowser/show?url=http%3A%2F%2Flocalhost%3A3000\")",
+      "Bash(python3 -c \"from PIL import Image; img = Image.open\\('src/app/img/pngwing.com\\(1\\).png'\\); print\\(img.size\\)\")",
+      "Bash(node -e \"const {createCanvas}=require\\('canvas'\\);const fs=require\\('fs'\\);const {execSync}=require\\('child_process'\\);console.log\\(execSync\\('identify -format \\\\\"%wx%h\\\\\" \\\\\"src/app/img/pngwing.com\\(1\\).png\\\\\"'\\).toString\\(\\)\\)\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"C:\\\\Users\\\\bilag\\\\ATTA logical\\\\attalogical-site\\\\src\\\\app\\\\img\\\\pngwing.com\\(1\\).png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))",
+      "Bash(xargs grep *)",
+      "Bash(node -e \"const r = require\\('./node_modules/react/package.json'\\); console.log\\(r.version\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\bilag\\.claude\\projects\\c--Users-bilag-ATTA-logical-attalogical-site\\memory",
-      "c:\\Users\\bilag\\ATTA logical\\attalogical-site\\src\\app\\projects"
+      "c:\\Users\\bilag\\ATTA logical\\attalogical-site\\src\\app\\projects",
+      "c:\\Users\\bilag\\ATTA logical\\attalogical-site\\sub cards\\assets"
     ]
   }
 }
