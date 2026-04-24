@@ -183,7 +183,7 @@ export default function Catalogue() {
         fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
         color: "rgba(0,0,0,0.35)",
       }}>
-        <Link href="/?extended=true" className="sub-back">← ATTA logical</Link>
+        <Link href="/" className="sub-back">← ATTA logical</Link>
         <span>ATTA·CAT·2026</span>
       </div>
 

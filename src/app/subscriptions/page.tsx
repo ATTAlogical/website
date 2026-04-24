@@ -231,7 +231,7 @@ export default function Subscriptions() {
           fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
           color: "rgba(0,0,0,0.35)",
         }}>
-          <Link href="/?extended=true" className="sub-back">← ATTA logical</Link>
+          <Link href="/" className="sub-back">← ATTA logical</Link>
           <span>ATTA·SUB·2026</span>
         </div>
 

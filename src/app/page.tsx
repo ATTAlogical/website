@@ -657,7 +657,8 @@ export default function Home() {
   useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
   useEffect(() => {
     setMounted(true);
-    if (new URLSearchParams(window.location.search).get("extended") === "true") {
+    if (sessionStorage.getItem("from-nav") === "1") {
+      sessionStorage.removeItem("from-nav");
       setShowExtended(true);
     }
   }, []);

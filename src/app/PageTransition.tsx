@@ -1,29 +1,34 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
 export default function PageTransition() {
-  const overlayRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
 
-  // New page mounted — overlay is white, fade it out to reveal the page
-  useEffect(() => {
-    const overlay = overlayRef.current;
-    if (!overlay) return;
-    overlay.style.transition = "none";
-    overlay.style.opacity = "1";
-    overlay.style.pointerEvents = "none";
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        overlay.style.transition = "opacity 0.25s ease-out";
-        overlay.style.opacity = "0";
-      });
-    });
+  // Runs before the browser paints the new page — set blur instantly
+  useLayoutEffect(() => {
+    document.body.style.transition = "none";
+    document.body.style.filter = "blur(12px)";
+    document.body.style.opacity = "0";
   }, [pathname]);
 
-  // Intercept internal link clicks — fade overlay in, then navigate
+  // Runs after DOM is ready — animate blur away, then clear filter entirely
+  useEffect(() => {
+    document.body.getBoundingClientRect(); // force reflow
+    document.body.style.transition = "filter 0.25s ease-out, opacity 0.25s ease-out";
+    document.body.style.filter = "blur(0px)";
+    document.body.style.opacity = "1";
+    const t = setTimeout(() => {
+      document.body.style.transition = "";
+      document.body.style.filter = "";
+      document.body.style.opacity = "";
+    }, 300);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  // Intercept link clicks — blur out, then navigate
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const a = (e.target as Element).closest("a");
@@ -41,12 +46,13 @@ export default function PageTransition() {
       e.preventDefault();
       e.stopPropagation();
 
-      const overlay = overlayRef.current;
-      if (!overlay) { router.push(href); return; }
+      if (href === "/" || href.startsWith("/?")) {
+        sessionStorage.setItem("from-nav", "1");
+      }
 
-      overlay.style.transition = "opacity 0.25s ease-in";
-      overlay.style.opacity = "1";
-      overlay.style.pointerEvents = "all";
+      document.body.style.transition = "filter 0.25s ease-in, opacity 0.25s ease-in";
+      document.body.style.filter = "blur(12px)";
+      document.body.style.opacity = "0";
 
       setTimeout(() => router.push(href), 250);
     };
@@ -55,17 +61,5 @@ export default function PageTransition() {
     return () => document.removeEventListener("click", handleClick, true);
   }, [router]);
 
-  return (
-    <div
-      ref={overlayRef}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "#fff",
-        opacity: 1,
-        pointerEvents: "none",
-        zIndex: 9999,
-      }}
-    />
-  );
+  return null;
 }
