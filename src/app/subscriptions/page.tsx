@@ -51,7 +51,7 @@ const TIERS: Tier[] = [
   },
   {
     key: "tropical", label: "Tropical", latin: "Silva pluvialis", price: "€120",
-    img: "/subscriptions/palm-tree.png", imgW: 260, imgH: 237,
+    img: "/img/Tropical.png", imgW: 260, imgH: 237,
     intensity: 0.95, pip: 4, plantCorner: "bottom-right",
   },
 ];
@@ -62,7 +62,7 @@ const TWEAKS: Record<string, number> = {
   basic_scale: 1,        basic_x: -0.2,   basic_y: -0,
   blooming_scale: 1.1,     blooming_x: -0.02, blooming_y: 0.10,
   flourished_scale: 1.8,   flourished_x: -0, flourished_y: 0,
-  tropical_scale: 1.5,     tropical_x: -0.1, tropical_y: 0.05,
+  tropical_scale: 2,     tropical_x: -0, tropical_y: -0.,
 
 };
 
