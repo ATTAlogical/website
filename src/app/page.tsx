@@ -7,6 +7,7 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from
 import Link from "next/link";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
+import { useCkoreAudio } from "@/context/CkoreAudio";
 
 const BAD_WORDS = new Set([
   "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
@@ -580,6 +581,9 @@ export default function Home() {
   const [formMessage, setFormMessage] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [lang, setLang] = useState<"en" | "nl">("en");
+  const [laugicalEntry, setLaugicalEntry] = useState<{ message: string; id: number } | null>(null);
+  const [showCkoreConfirm, setShowCkoreConfirm] = useState(false);
+  const { triggerPlay } = useCkoreAudio();
   const [showExtended, setShowExtended] = useState(false);
   const [scrollToContact, setScrollToContact] = useState(false);
   const [scrollToWork, setScrollToWork] = useState(false);
@@ -607,7 +611,11 @@ export default function Home() {
   const handleChipClick = useCallback((label: string) => {
     if (label === "Contact") setContactClicks(c => c + 1);
     if (label === "logical") { setShowExtended(true); setScrollToWork(true); }
-  }, []);
+    if (label === "CKORE") { setShowCkoreConfirm(true); }
+    if (label === "Laugical") {
+      setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
+    }
+  }, [lang]);
 
   const handleClosePopup = useCallback(() => setExpandedProject(null), []);
 
@@ -804,6 +812,12 @@ export default function Home() {
     }, 600);
     return () => clearTimeout(t);
   }, [chips]);
+
+  // Trigger audio when CKORE chip first appears
+  useEffect(() => {
+    const ckoreActive = chips.some(c => c.label === "CKORE" && c.state !== "exiting");
+    if (ckoreActive) triggerPlay();
+  }, [chips, triggerPlay]);
 
   // Add chip on submit
   useEffect(() => {
@@ -1199,6 +1213,36 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── LAUGICAL ── */}
+        <AnimatePresence>
+          {laugicalEntry && (
+            <motion.div
+              key={laugicalEntry.id}
+              style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0,
+                height: isMobile ? "calc(50svh - 22vw)" : "12.5svh",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                pointerEvents: "none", zIndex: 50,
+              }}
+              animate={{ opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 4, times: [0, 0.05, 0.75, 1], ease: "easeInOut" }}
+              exit={{ opacity: 0, transition: { duration: 0.22, ease: "easeIn" } }}
+              onAnimationComplete={() => setLaugicalEntry(null)}
+            >
+              <span style={{
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(0.9rem, 3.5vw, 1.3rem)",
+                color: "rgba(0,0,0,0.38)",
+                letterSpacing: "0.22em",
+                fontStyle: "italic",
+              }}>
+                {laugicalEntry.message}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>{/* end hero */}
 
       {/* ── EXTENDED SECTIONS ── */}
@@ -1532,6 +1576,122 @@ export default function Home() {
           {lang}
         </span>
       </div>
+
+      {/* ── CKORE CONFIRM ── */}
+      <AnimatePresence>
+        {showCkoreConfirm && (
+          <motion.div
+            key="ckore-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowCkoreConfirm(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 300,
+              background: "rgba(0,0,0,0.18)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: "rgba(255,255,255,0.92)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: "20px",
+                padding: "2.4rem 2.8rem",
+                textAlign: "center",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+                maxWidth: "340px",
+                width: "88vw",
+              }}
+            >
+              <p style={{
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "0.82rem",
+                letterSpacing: "0.08em",
+                color: "rgba(0,0,0,0.55)",
+                marginBottom: "0.5rem",
+              }}>
+                {lang === "nl" ? "Je wordt doorgestuurd naar" : "You are about to be redirected to"}
+              </p>
+              <p style={{
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(1.1rem, 4vw, 1.4rem)",
+                fontWeight: 400,
+                letterSpacing: "0.04em",
+                color: "rgba(0,0,0,0.75)",
+                marginBottom: "0.5rem",
+              }}>
+                Spotify
+              </p>
+              <p style={{
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "0.88rem",
+                letterSpacing: "0.06em",
+                color: "rgba(0,0,0,0.5)",
+                fontStyle: "italic",
+                marginBottom: "2rem",
+              }}>
+                {lang === "nl" ? "weet je het zeker?" : "are you sure?"}
+              </p>
+              <div style={{ display: "flex", gap: "0.8rem", justifyContent: "center" }}>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    setShowCkoreConfirm(false);
+                    window.open("https://open.spotify.com/artist/46tB6JRgT9ACCI5nHmby4G?si=eIenGhlxQWCWBOKWjkjRag", "_blank", "noreferrer");
+                  }}
+                  style={{
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "0.65rem",
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    padding: "0.55rem 1.4rem",
+                    borderRadius: "40px",
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "rgba(0,0,0,0.82)",
+                    color: "rgba(255,255,255,0.9)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {lang === "nl" ? "ja" : "yes"}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setShowCkoreConfirm(false)}
+                  style={{
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: "0.65rem",
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    padding: "0.55rem 1.4rem",
+                    borderRadius: "40px",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    background: "transparent",
+                    color: "rgba(0,0,0,0.45)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {lang === "nl" ? "nee" : "no"}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
     </main>
   );
 }
