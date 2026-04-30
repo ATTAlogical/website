@@ -2,6 +2,7 @@
 
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
@@ -156,6 +157,15 @@ export default function Catalogue() {
   const [activeSlug, setActiveSlug] = useState(PROJECTS_DATA[0].slug);
   const active = PROJECTS_DATA.find(p => p.slug === activeSlug) ?? PROJECTS_DATA[0];
   const handleBecomeActive = useCallback((slug: string) => setActiveSlug(slug), []);
+  const [leaving, setLeaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const onLeaving = () => setLeaving(true);
+    window.addEventListener("page:leaving", onLeaving);
+    return () => window.removeEventListener("page:leaving", onLeaving);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
@@ -173,6 +183,7 @@ export default function Catalogue() {
   }, []);
 
   return (
+    <>
     <main style={{ minHeight: "100vh", background: "#f7f7f7", fontFamily: '"Playfair Display", serif', paddingBottom: isMobile ? "90px" : "160px" }}>
 
       {/* Top nav */}
@@ -191,15 +202,25 @@ export default function Catalogue() {
         <ProjectSection key={project.slug} project={project} onBecomeActive={handleBecomeActive} isFirst={i === 0} isMobile={isMobile} />
       ))}
 
-      {/* Fixed bottom info panel */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
-        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-        background: "rgba(247,247,247,0.92)", borderTop: "1px solid rgba(0,0,0,0.06)",
-        padding: isMobile
-          ? `0.85rem 5vw max(0.85rem, env(safe-area-inset-bottom, 0.85rem))`
-          : "1.5rem 8vw 2rem",
-      }}>
+    </main>
+
+    {mounted && createPortal(
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: leaving ? "100%" : 0 }}
+        transition={leaving
+          ? { duration: 0.38, ease: [0.4, 0, 1, 1] }
+          : { type: "spring", stiffness: 28, damping: 9, mass: 1.4, delay: 0.28 }
+        }
+        style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+          backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+          background: "rgba(247,247,247,0.92)", borderTop: "1px solid rgba(0,0,0,0.06)",
+          padding: isMobile
+            ? `0.85rem 5vw max(0.85rem, env(safe-area-inset-bottom, 0.85rem))`
+            : "1.5rem 8vw 2rem",
+        }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={active.slug}
@@ -262,7 +283,9 @@ export default function Catalogue() {
             )}
           </motion.div>
         </AnimatePresence>
-      </div>
-    </main>
+      </motion.div>,
+      document.body
+    )}
+    </>
   );
 }

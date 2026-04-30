@@ -159,33 +159,67 @@ export function CkoreAudioProvider({ children }: { children: React.ReactNode }) 
               zIndex: 200,
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
+              alignItems: "flex-end",
               gap: "0.5rem",
             }}
           >
-            <motion.button
-              whileHover={{ opacity: 0.7 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setCkoreMuted(m => {
-                if (m) { fadeAudioTo(ckoreVolume); } else { fadeAudioTo(0); }
-                return !m;
-              })}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                color: "rgba(0,0,0,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.1rem", height: "1.1rem" }}>
-                <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                <motion.path d="M15.54 8.46a5 5 0 0 1 0 7.07" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2 }} />
-                <motion.path d="M19.07 4.93a10 10 0 0 1 0 14.14" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2, delay: 0.05 }} />
-                <motion.line x1="23" y1="9" x2="17" y2="15" initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: ckoreMuted ? 1 : 0, opacity: ckoreMuted ? 1 : 0 }} transition={{ duration: 0.25, ease: "easeInOut" }} />
-              </svg>
-            </motion.button>
+            {isMobile ? (
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setCkoreMuted(m => {
+                  if (m) { fadeAudioTo(ckoreVolume); } else { fadeAudioTo(0); }
+                  return !m;
+                })}
+                style={{
+                  background: "rgba(255,255,255,0.88)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid rgba(0,0,0,0.07)",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                  width: "2.6rem",
+                  height: "2.6rem",
+                  borderRadius: "50%",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "rgba(0,0,0,0.45)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "opacity 0.2s",
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "1.1rem", height: "1.1rem" }}>
+                  <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                  <motion.path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2 }} />
+                  <motion.path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2, delay: 0.05 }} />
+                  <motion.line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: ckoreMuted ? 1 : 0, opacity: ckoreMuted ? 1 : 0 }} transition={{ duration: 0.25, ease: "easeInOut" }} />
+                </svg>
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setCkoreMuted(m => {
+                  if (m) { fadeAudioTo(ckoreVolume); } else { fadeAudioTo(0); }
+                  return !m;
+                })}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "rgba(0,0,0,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "opacity 0.2s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.6")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "1.1rem", height: "1.1rem" }}>
+                  <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                  <motion.path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2 }} />
+                  <motion.path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" animate={{ opacity: ckoreMuted ? 0 : 1 }} transition={{ duration: 0.2, delay: 0.05 }} />
+                  <motion.line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: ckoreMuted ? 1 : 0, opacity: ckoreMuted ? 1 : 0 }} transition={{ duration: 0.25, ease: "easeInOut" }} />
+                </svg>
+              </motion.button>
+            )}
 
             <AnimatePresence>
               {showVolumeSlider && (

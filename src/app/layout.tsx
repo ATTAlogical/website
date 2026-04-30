@@ -43,7 +43,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <CkoreAudioProvider>
-          {children}
+          <div id="page-blur-layer">{children}</div>
           <Analytics />
           <PageTransition />
         </CkoreAudioProvider>

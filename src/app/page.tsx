@@ -5,9 +5,11 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import Link from "next/link";
+import { useTransitionRouter } from "@/hooks/useTransitionRouter";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
+import { validateName, validateEmail, validateMessage, sanitizeForMailto, createSubmitThrottle } from "@/lib/validation";
 
 const BAD_WORDS = new Set([
   "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
@@ -114,6 +116,12 @@ const CHIP_PHASES: Record<string, number> = {
   Contact:  Math.PI * 1.5,
 };
 
+function labelPhase(label: string): number {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (Math.imul(h, 31) ^ label.charCodeAt(i)) >>> 0;
+  return (h / 0xFFFFFFFF) * Math.PI * 2;
+}
+
 function getChipPosition(
   label: string,
   angle: number,
@@ -121,7 +129,7 @@ function getChipPosition(
   H: number,
   glassRect: DOMRect | null,
 ): { x: number; y: number } {
-  const phase = CHIP_PHASES[label] ?? 0;
+  const phase = CHIP_PHASES[label] ?? labelPhase(label);
   const a = angle + phase;
 
   // Orbit centered on the glass, radii just outside glass edges, capped at viewport
@@ -144,6 +152,28 @@ type Chip = {
   id: string;
   label: string;
   state: ChipState;
+  href?: string;
+  section?: string;
+};
+
+// Positioned absolutely so it never shifts the "ATTA logical" text when it appears
+const QMARK_STYLE: React.CSSProperties = {
+  position: "absolute",
+  left: "100%",
+  top: 0,
+  display: "inline-block",
+  paddingLeft: "0.08em",
+  paddingBottom: "0.2em",
+  background: "linear-gradient(180deg, #000000 0%, #111111 40%, #666666 80%, #888888 100%)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  backgroundClip: "text",
+  filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2)) drop-shadow(0 2px 6px rgba(255,255,255,0.5))",
+  fontFamily: "inherit",
+  fontSize: "inherit",
+  fontWeight: "inherit",
+  letterSpacing: "inherit",
+  lineHeight: "inherit",
 };
 
 const CHROME_TEXT_STYLE: React.CSSProperties = {
@@ -175,6 +205,127 @@ const CHIP_SVG_STYLE: React.CSSProperties = {
   color: "#000",
   overflow: "visible",
 };
+
+// Smooth closed blob path seeded from label + salt — unique per chip, deterministic.
+// Seeded RNG — deterministic per label+salt so the same chip always draws the same figure
+function chipRng(label: string, salt = 0) {
+  let h = (salt * 2654435761) >>> 0;
+  for (let i = 0; i < label.length; i++) h = (Math.imul(h, 31) ^ label.charCodeAt(i)) >>> 0;
+  return () => { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; return h / 4294967296; };
+}
+
+// Six clean geometric generators — label hash picks which one, label chars seed the proportions
+type Rng = () => number;
+
+function genLayers(r: Rng) {
+  const spreads = [58, 44, 32], peaks = [11, 9, 7];
+  const ys = [22 + r() * 4, 40, 58 - r() * 4];
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      {ys.map((y, i) => (
+        <motion.path key={i}
+          d={`M ${80 - spreads[i]} ${y} L 80 ${y - peaks[i]} L ${80 + spreads[i]} ${y} L 80 ${y + peaks[i]} Z`}
+          stroke="currentColor" strokeWidth={[0.8, 0.6, 0.4][i]} strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: [0.22, 0.15, 0.09][i] }}
+          transition={{ duration: [1.2, 1.4, 1.6][i], delay: [0.4, 0.6, 0.8][i], ease: "easeOut" }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function genRings(r: Rng) {
+  const rx = 44 + r() * 10, ry = 20 + r() * 7;
+  const n = 2 + Math.round(r());
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      {Array.from({ length: n }, (_, i) => {
+        const s = 1 - i * 0.36;
+        return <motion.ellipse key={i} cx="80" cy="40" rx={rx * s} ry={ry * s}
+          stroke="currentColor" strokeWidth={i === 0 ? 0.8 : 0.5}
+          initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.22 - i * 0.07 }}
+          transition={{ duration: 1.5 + i * 0.25, delay: 0.4 + i * 0.3, ease: "easeOut" }}
+        />;
+      })}
+    </svg>
+  );
+}
+
+function genGrid(r: Rng) {
+  const cols = 2 + Math.floor(r() * 2), rows = 2 + Math.floor(r() * 2);
+  const x0 = 30, x1 = 130, y0 = 16, y1 = 64;
+  const xs = Array.from({ length: cols }, (_, i) => x0 + (x1 - x0) * i / (cols - 1));
+  const ys = Array.from({ length: rows }, (_, i) => y0 + (y1 - y0) * i / (rows - 1));
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      {xs.map((x, i) => <motion.line key={`v${i}`} x1={x} y1={y0} x2={x} y2={y1}
+        stroke="currentColor" strokeWidth="0.6"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.18 }}
+        transition={{ duration: 0.8, delay: 0.4 + i * 0.12, ease: "easeOut" }} />)}
+      {ys.map((y, i) => <motion.line key={`h${i}`} x1={x0} y1={y} x2={x1} y2={y}
+        stroke="currentColor" strokeWidth="0.6"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.14 }}
+        transition={{ duration: 1.0, delay: 0.5 + i * 0.14, ease: "easeOut" }} />)}
+    </svg>
+  );
+}
+
+function genWave(r: Rng) {
+  const amp = 11 + r() * 9, freq = 1.5 + r() * 1.5;
+  const pts = (phase: number, base: number) =>
+    Array.from({ length: 33 }, (_, i) => {
+      const x = 8 + 144 * i / 32;
+      const y = base + amp * Math.sin(i / 32 * freq * Math.PI * 2 + phase);
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(" ");
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      <motion.path d={pts(0, 40)} stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 1.8, delay: 0.4, ease: "easeOut" }} />
+      <motion.path d={pts(Math.PI, 40)} stroke="currentColor" strokeWidth="0.4" strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.11 }}
+        transition={{ duration: 2, delay: 0.65, ease: "easeOut" }} />
+    </svg>
+  );
+}
+
+function genBrackets(r: Rng) {
+  const size = 22 + r() * 12, gap = 28 + r() * 12, tip = 12 + r() * 6;
+  const lx = 80 - gap, rx = 80 + gap;
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      <motion.path d={`M ${lx} ${40 - size} L ${lx - tip} ${40} L ${lx} ${40 + size}`}
+        stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 0.9, delay: 0.4, ease: "easeOut" }} />
+      <motion.path d={`M ${rx} ${40 - size} L ${rx + tip} ${40} L ${rx} ${40 + size}`}
+        stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.22 }}
+        transition={{ duration: 0.9, delay: 0.55, ease: "easeOut" }} />
+    </svg>
+  );
+}
+
+function genRadial(r: Rng) {
+  const n = 5 + Math.floor(r() * 3), inner = 10 + r() * 6, outer = 26 + r() * 12;
+  return (
+    <svg viewBox="0 0 160 80" fill="none" style={CHIP_SVG_STYLE}>
+      {Array.from({ length: n }, (_, i) => {
+        const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+        return <motion.line key={i}
+          x1={(80 + inner * Math.cos(a)).toFixed(1)} y1={(40 + inner * Math.sin(a) * 0.6).toFixed(1)}
+          x2={(80 + outer * Math.cos(a)).toFixed(1)} y2={(40 + outer * Math.sin(a) * 0.6).toFixed(1)}
+          stroke="currentColor" strokeWidth="0.7" strokeLinecap="round"
+          initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.2 }}
+          transition={{ duration: 0.7, delay: 0.4 + i * 0.08, ease: "easeOut" }}
+        />;
+      })}
+    </svg>
+  );
+}
+
+const GENERATORS = [genLayers, genRings, genGrid, genWave, genBrackets, genRadial];
 
 // Inline SVGs so motion.path can animate pathLength (draw-in effect)
 const ChipSVG = memo(function ChipSVG({ label }: { label: string }) {
@@ -236,7 +387,10 @@ const ChipSVG = memo(function ChipSVG({ label }: { label: string }) {
     </svg>
   );
 
-  return null;
+  // Pick generator by hashing the label, then seed its proportions
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (Math.imul(h, 31) ^ label.charCodeAt(i)) >>> 0;
+  return GENERATORS[h % GENERATORS.length](chipRng(label));
 });
 
 // Per-chip memoised to prevent animation restarts on sibling updates
@@ -247,7 +401,7 @@ const ChipItem = memo(function ChipItem({
 }: {
   chip: Chip;
   chipElsRef: React.MutableRefObject<Map<string, HTMLDivElement>>;
-  onChipClick: (label: string) => void;
+  onChipClick: (label: string, href?: string, section?: string) => void;
 }) {
   const isVisible = chip.state === "visible";
   const isExiting = chip.state === "exiting";
@@ -270,7 +424,7 @@ const ChipItem = memo(function ChipItem({
         cursor: "pointer",
         userSelect: "none",
       }}
-      onClick={() => onChipClick(chip.label)}
+      onClick={() => onChipClick(chip.label, chip.href, chip.section)}
     >
       <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0.3em 0" }}>
         {chip.label !== "Contact" && <ChipSVG label={chip.label} />}
@@ -542,7 +696,7 @@ const ChipLayer = memo(function ChipLayer({
 }: {
   chips: Chip[];
   chipElsRef: React.MutableRefObject<Map<string, HTMLDivElement>>;
-  onChipClick: (label: string) => void;
+  onChipClick: (label: string, href?: string, section?: string) => void;
 }) {
   return (
     <>
@@ -561,6 +715,7 @@ const ChipLayer = memo(function ChipLayer({
 export default function Home() {
   const temporal = useTemporalEvolution();
   const isMobile = useIsMobile();
+  const navigate = useTransitionRouter();
   const [mounted, setMounted] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [logicalNudgeDone, setLogicalNudgeDone] = useState(false);
@@ -580,9 +735,14 @@ export default function Home() {
   const [formEmail, setFormEmail] = useState("");
   const [formMessage, setFormMessage] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  // Throttle prevents accidental double-submit; 10 s cooldown between sends
+  const contactThrottle = useRef(createSubmitThrottle(10_000));
   const [lang, setLang] = useState<"en" | "nl">("en");
   const [laugicalEntry, setLaugicalEntry] = useState<{ message: string; id: number } | null>(null);
   const [showCkoreConfirm, setShowCkoreConfirm] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showQuestionMark, setShowQuestionMark] = useState(false);
   const { triggerPlay } = useCkoreAudio();
   const [showExtended, setShowExtended] = useState(false);
   const [scrollToContact, setScrollToContact] = useState(false);
@@ -608,22 +768,57 @@ export default function Home() {
   const cardRowContainerRef = useRef<HTMLDivElement>(null);
   const isMobileRef = useRef(false);
 
-  const handleChipClick = useCallback((label: string) => {
-    if (label === "Contact") setContactClicks(c => c + 1);
-    if (label === "logical") { setShowExtended(true); setScrollToWork(true); }
-    if (label === "CKORE") { setShowCkoreConfirm(true); }
+  const pushChip = useCallback((label: string, href?: string, section?: string) => {
+    setChipSubmitCount(c => c + 1);
+    setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
+    setChips(prev => {
+      const active = prev.filter(c => c.state !== "exiting");
+      if (active.some(c => c.label === label)) return prev;
+      let next = [...prev];
+      if (active.length >= 1) {
+        const oldest = active[0];
+        next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
+      }
+      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", href, section });
+      return next;
+    });
+  }, []);
+
+  const handleChipClick = useCallback((label: string, href?: string, section?: string) => {
+    if (href) { navigate(href); return; }
+    if (section === "work") { setShowExtended(true); setScrollToWork(true); return; }
+    if (section === "contact") { setShowExtended(true); setScrollToContact(true); return; }
+    // Instant-resolver chips (CKORE, Laugical) — special behaviors
+    if (label === "CKORE") { setShowCkoreConfirm(true); return; }
     if (label === "Laugical") {
       setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
     }
-  }, [lang]);
+  }, [lang, navigate]);
 
   const handleClosePopup = useCallback(() => setExpandedProject(null), []);
 
   function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setFormError(null);
+
+    // Client-side throttle — mailto forms have no server; this prevents rapid double-sends
+    if (!contactThrottle.current.canSubmit()) {
+      setFormError("Please wait a moment before sending again.");
+      return;
+    }
+
+    // Schema validation: reject oversized or malformed input before building the mailto
+    const nameCheck = validateName(formName);
+    if (!nameCheck.ok) { setFormError(nameCheck.error!); return; }
+    const emailCheck = validateEmail(formEmail);
+    if (!emailCheck.ok) { setFormError(emailCheck.error!); return; }
+    const msgCheck = validateMessage(formMessage);
+    if (!msgCheck.ok) { setFormError(msgCheck.error!); return; }
+
     const subject = "Enquiry via ATTAlogical";
-    const body = `Name: ${formName}\nEmail: ${formEmail}\n\n${formMessage}`;
+    const body = `Name: ${sanitizeForMailto(formName)}\nEmail: ${sanitizeForMailto(formEmail)}\n\n${sanitizeForMailto(formMessage)}`;
     window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    contactThrottle.current.record();
     setFormSubmitted(true);
   }
 
@@ -819,33 +1014,41 @@ export default function Home() {
     if (ckoreActive) triggerPlay();
   }, [chips, triggerPlay]);
 
-  // Add chip on submit
+  // Add chip on submit — instant keyword match first, AI fallback for novel queries
   useEffect(() => {
     if (!submittedQuery) return;
-    const label = resolveChip(submittedQuery.value);
-    if (!label) return;
+    const q = submittedQuery.value;
 
-    setChipSubmitCount(c => c + 1);
-    setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
+    if (isBadWord(q)) return;
 
-    setChips(prev => {
-      const active = prev.filter(c => c.state !== "exiting");
-      if (active.some(c => c.label === label)) return prev;
+    const label = resolveChip(q);
+    if (label) { pushChip(label); return; }
 
-      let next = [...prev];
-      if (active.length >= 1) {
-        const oldest = active[0];
-        next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
-      }
+    // Keyword match missed — ask the AI
+    setIsAiLoading(true);
+    setShowQuestionMark(false);
 
-      next.push({
-        id: `${label}-${Date.now()}-${Math.random()}`,
-        label,
-        state: "entering",
+    fetch("/api/resolve-chip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: q }),
+    })
+      .then(r => r.json())
+      .then(({ label: aiLabel, href, section }: { label: string | null; href?: string; section?: string }) => {
+        setIsAiLoading(false);
+        if (aiLabel) {
+          pushChip(aiLabel, href, section);
+        } else {
+          setShowQuestionMark(true);
+          setTimeout(() => setShowQuestionMark(false), 2400);
+        }
+      })
+      .catch(() => {
+        setIsAiLoading(false);
+        setShowQuestionMark(true);
+        setTimeout(() => setShowQuestionMark(false), 2400);
       });
-      return next;
-    });
-  }, [submittedQuery]);
+  }, [submittedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!submittedQuery || !isBadWord(submittedQuery.value)) return;
@@ -920,7 +1123,15 @@ export default function Home() {
                     userSelect: "none",
                   }}
                 >
-                  <span className="glossy-text">ATTA logical</span>
+                  <span style={{ position: "relative", display: "inline-block" }}>
+                    <span className="glossy-text">ATTA logical</span>
+                    <AnimatePresence>
+                      {showQuestionMark && (
+                        <motion.span key="qm-m" style={QMARK_STYLE}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </span>
                 </h1>
                 <div
                   className="pointer-events-none"
@@ -935,7 +1146,15 @@ export default function Home() {
                     lineHeight: 1.1,
                   }}
                 >
-                  <span className="glossy-text">ATTA logical</span>
+                  <span style={{ position: "relative", display: "inline-block" }}>
+                    <span className="glossy-text">ATTA logical</span>
+                    <AnimatePresence>
+                      {showQuestionMark && (
+                        <motion.span key="qm-mr" style={QMARK_STYLE}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </span>
                 </div>
               </div>
             </div>
@@ -962,7 +1181,7 @@ export default function Home() {
                       type: "spring", stiffness: 120, damping: 12, mass: 1.5,
                       opacity: { type: "tween", duration: chipSubmitCount <= 1 ? 1.5 : 0.65, ease: "easeOut" },
                     }}
-                    onClick={() => handleChipClick(chip.label)}
+                    onClick={() => handleChipClick(chip.label, chip.href, chip.section)}
                     style={{
                       background: "none", border: "none",
                       borderBottom: "1px solid rgba(0,0,0,0.18)",
@@ -1033,7 +1252,7 @@ export default function Home() {
                     width: "85vw",
                     background: "transparent",
                     border: "none",
-                    borderBottom: "1px solid rgba(0,0,0,0.15)",
+                    borderBottom: `1px solid ${isAiLoading ? "rgba(80,190,255,0.3)" : "rgba(0,0,0,0.15)"}`,
                     outline: "none",
                     fontFamily: '"Playfair Display", serif',
                     fontSize: "1rem",
@@ -1042,8 +1261,22 @@ export default function Home() {
                     padding: "0.4em 0",
                     textAlign: "center",
                     caretColor: "#000",
+                    transition: "border-bottom-color 0.4s ease",
                   }}
                 />
+                <AnimatePresence>
+                  {isAiLoading && (
+                    <motion.div key="water-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "1px", overflow: "hidden", pointerEvents: "none" }}>
+                      <div className="water-flow" style={{
+                        position: "absolute", inset: 0,
+                        background: "linear-gradient(90deg, transparent 0%, rgba(80,190,255,0.5) 35%, rgba(160,230,255,0.9) 50%, rgba(80,190,255,0.5) 65%, transparent 100%)",
+                        backgroundSize: "50% 100%",
+                      }} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </>
@@ -1082,7 +1315,15 @@ export default function Home() {
                     cursor: "default",
                   }}
                 >
-                  <span className="glossy-text">ATTA logical</span>
+                  <span style={{ position: "relative", display: "inline-block" }}>
+                    <span className="glossy-text">ATTA logical</span>
+                    <AnimatePresence>
+                      {showQuestionMark && (
+                        <motion.span key="qm-d" style={QMARK_STYLE}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </span>
                 </h1>
 
                 <div
@@ -1100,7 +1341,15 @@ export default function Home() {
                     lineHeight: 1.1,
                   }}
                 >
-                  <span className="glossy-text">ATTA logical</span>
+                  <span style={{ position: "relative", display: "inline-block" }}>
+                    <span className="glossy-text">ATTA logical</span>
+                    <AnimatePresence>
+                      {showQuestionMark && (
+                        <motion.span key="qm-dr" style={QMARK_STYLE}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </span>
                 </div>
               </div>
 
@@ -1172,15 +1421,30 @@ export default function Home() {
                   onBlur={() => setIsFocused(false)}
                   style={{
                     background: "transparent", border: "none",
-                    borderBottom: "1px solid rgba(0,0,0,0.15)", outline: "none",
+                    borderBottom: `1px solid ${isAiLoading ? "rgba(80,190,255,0.3)" : "rgba(0,0,0,0.15)"}`,
+                    outline: "none",
                     fontFamily: '"Playfair Display", serif',
                     fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
                     color: "#000", letterSpacing: "0.08em",
                     padding: "0.4em 0",
                     width: "clamp(180px, 25vw, 320px)",
                     textAlign: "center", caretColor: "#000",
+                    transition: "border-bottom-color 0.4s ease",
                   }}
                 />
+                <AnimatePresence>
+                  {isAiLoading && (
+                    <motion.div key="water-d" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "1px", overflow: "hidden", pointerEvents: "none" }}>
+                      <div className="water-flow" style={{
+                        position: "absolute", inset: 0,
+                        background: "linear-gradient(90deg, transparent 0%, rgba(80,190,255,0.5) 35%, rgba(160,230,255,0.9) 50%, rgba(80,190,255,0.5) 65%, transparent 100%)",
+                        backgroundSize: "50% 100%",
+                      }} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </>
@@ -1349,16 +1613,17 @@ export default function Home() {
                       <form className="sub-contact-form" onSubmit={handleContactFormSubmit}>
                         <div className="sub-contact-row">
                           <label className="sub-contact-label">Name</label>
-                          <input className="sub-contact-input" type="text" required autoComplete="name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Your name" />
+                          <input className="sub-contact-input" type="text" required autoComplete="name" maxLength={100} value={formName} onChange={e => { setFormName(e.target.value); setFormError(null); }} placeholder="Your name" />
                         </div>
                         <div className="sub-contact-row">
                           <label className="sub-contact-label">Email</label>
-                          <input className="sub-contact-input" type="email" required autoComplete="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="your@email.com" />
+                          <input className="sub-contact-input" type="email" required autoComplete="email" maxLength={254} value={formEmail} onChange={e => { setFormEmail(e.target.value); setFormError(null); }} placeholder="your@email.com" />
                         </div>
                         <div className="sub-contact-row">
                           <label className="sub-contact-label">Message</label>
-                          <textarea className="sub-contact-textarea" required rows={5} value={formMessage} onChange={e => setFormMessage(e.target.value)} placeholder="What can I help you with?" />
+                          <textarea className="sub-contact-textarea" required rows={5} maxLength={2000} value={formMessage} onChange={e => { setFormMessage(e.target.value); setFormError(null); }} placeholder="What can I help you with?" />
                         </div>
+                        {formError && <p style={{ color: "rgba(180,0,0,0.75)", fontSize: "0.75rem", margin: "0 0 0.5rem" }}>{formError}</p>}
                         <button type="submit" className="sub-contact-send">Send message</button>
                       </form>
                     )}

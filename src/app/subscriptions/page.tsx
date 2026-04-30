@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { validateName, validateEmail, validateMessage, sanitizeForMailto, createSubmitThrottle } from "@/lib/validation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -190,13 +191,30 @@ export default function Subscriptions() {
   const [formTier, setFormTier] = useState("");
   const [formMessage, setFormMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const submitThrottle = useRef(createSubmitThrottle(10_000));
   const isMobile = useIsMobile();
 
   function handleContactSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setFormError(null);
+
+    if (!submitThrottle.current.canSubmit()) {
+      setFormError("Please wait a moment before sending again.");
+      return;
+    }
+
+    const nameCheck = validateName(formName);
+    if (!nameCheck.ok) { setFormError(nameCheck.error!); return; }
+    const emailCheck = validateEmail(formEmail);
+    if (!emailCheck.ok) { setFormError(emailCheck.error!); return; }
+    const msgCheck = validateMessage(formMessage);
+    if (!msgCheck.ok) { setFormError(msgCheck.error!); return; }
+
     const subject = `Subscription enquiry — ${formTier || "General"}`;
-    const body = `Name: ${formName}\nEmail: ${formEmail}\nTier: ${formTier || "Not specified"}\n\n${formMessage}`;
+    const body = `Name: ${sanitizeForMailto(formName)}\nEmail: ${sanitizeForMailto(formEmail)}\nTier: ${formTier || "Not specified"}\n\n${sanitizeForMailto(formMessage)}`;
     window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    submitThrottle.current.record();
     setSubmitted(true);
   }
   const c = CONTENT[lang];
@@ -207,6 +225,8 @@ export default function Subscriptions() {
     document.body.style.height = "auto";
     document.documentElement.style.overflow = "auto";
     document.documentElement.style.height = "auto";
+    const id = window.location.hash.slice(1);
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }));
     return () => {
       document.body.style.overflow = "";
       document.body.style.height = "";
@@ -248,7 +268,7 @@ export default function Subscriptions() {
         </div>
 
         {/* ── Taxonomy plate ── */}
-        <section className="sub-plate-wrap">
+        <section id="plans" className="sub-plate-wrap">
           <div className="sub-plate-border">
 
             <div className="sub-plate-title-row">
@@ -384,11 +404,11 @@ export default function Subscriptions() {
                     <form className="sub-contact-form" style={{ paddingTop: "16px" }} onSubmit={handleContactSubmit}>
                       <div className="sub-contact-row">
                         <label className="sub-contact-label">Name</label>
-                        <input className="sub-contact-input" type="text" required autoComplete="name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Your name" />
+                        <input className="sub-contact-input" type="text" required autoComplete="name" maxLength={100} value={formName} onChange={e => { setFormName(e.target.value); setFormError(null); }} placeholder="Your name" />
                       </div>
                       <div className="sub-contact-row">
                         <label className="sub-contact-label">Email</label>
-                        <input className="sub-contact-input" type="email" required autoComplete="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="your@email.com" />
+                        <input className="sub-contact-input" type="email" required autoComplete="email" maxLength={254} value={formEmail} onChange={e => { setFormEmail(e.target.value); setFormError(null); }} placeholder="your@email.com" />
                       </div>
                       <div className="sub-contact-row">
                         <label className="sub-contact-label">Tier interest</label>
@@ -399,8 +419,9 @@ export default function Subscriptions() {
                       </div>
                       <div className="sub-contact-row">
                         <label className="sub-contact-label">Message</label>
-                        <textarea className="sub-contact-textarea" required rows={5} value={formMessage} onChange={e => setFormMessage(e.target.value)} placeholder="Tell me a bit about your site and what you need." />
+                        <textarea className="sub-contact-textarea" required rows={5} maxLength={2000} value={formMessage} onChange={e => { setFormMessage(e.target.value); setFormError(null); }} placeholder="Tell me a bit about your site and what you need." />
                       </div>
+                      {formError && <p style={{ color: "rgba(180,0,0,0.75)", fontSize: "0.75rem", margin: "0 0 0.5rem" }}>{formError}</p>}
                       <button type="submit" className="sub-contact-send">Send message</button>
                     </form>
                   )}

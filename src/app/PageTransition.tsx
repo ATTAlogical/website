@@ -3,27 +3,35 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
+function layer(): HTMLElement | null {
+  return document.getElementById("page-blur-layer");
+}
+
 export default function PageTransition() {
   const router = useRouter();
   const pathname = usePathname();
 
   // Runs before the browser paints the new page — set blur instantly
   useLayoutEffect(() => {
-    document.body.style.transition = "none";
-    document.body.style.filter = "blur(12px)";
-    document.body.style.opacity = "0";
+    const el = layer();
+    if (!el) return;
+    el.style.transition = "none";
+    el.style.filter = "blur(12px)";
+    el.style.opacity = "0";
   }, [pathname]);
 
   // Runs after DOM is ready — animate blur away, then clear filter entirely
   useEffect(() => {
-    document.body.getBoundingClientRect(); // force reflow
-    document.body.style.transition = "filter 0.25s ease-out, opacity 0.25s ease-out";
-    document.body.style.filter = "blur(0px)";
-    document.body.style.opacity = "1";
+    const el = layer();
+    if (!el) return;
+    el.getBoundingClientRect(); // force reflow
+    el.style.transition = "filter 0.25s ease-out, opacity 0.25s ease-out";
+    el.style.filter = "blur(0px)";
+    el.style.opacity = "1";
     const t = setTimeout(() => {
-      document.body.style.transition = "";
-      document.body.style.filter = "";
-      document.body.style.opacity = "";
+      el.style.transition = "";
+      el.style.filter = "";
+      el.style.opacity = "";
     }, 300);
     return () => clearTimeout(t);
   }, [pathname]);
@@ -50,11 +58,15 @@ export default function PageTransition() {
         sessionStorage.setItem("from-nav", "1");
       }
 
-      document.body.style.transition = "filter 0.25s ease-in, opacity 0.25s ease-in";
-      document.body.style.filter = "blur(12px)";
-      document.body.style.opacity = "0";
+      const el = layer();
+      if (el) {
+        window.dispatchEvent(new Event("page:leaving"));
+        el.style.transition = "filter 0.4s ease-in, opacity 0.4s ease-in";
+        el.style.filter = "blur(12px)";
+        el.style.opacity = "0";
+      }
 
-      setTimeout(() => router.push(href), 250);
+      setTimeout(() => router.push(href), 420);
     };
 
     document.addEventListener("click", handleClick, true);
