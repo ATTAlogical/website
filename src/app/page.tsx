@@ -774,8 +774,9 @@ export default function Home() {
     setChips(prev => {
       const active = prev.filter(c => c.state !== "exiting");
       if (active.some(c => c.label === label)) return prev;
+      const maxChips = isMobileRef.current ? 1 : 3;
       let next = [...prev];
-      if (active.length >= 1) {
+      if (active.length >= maxChips) {
         const oldest = active[0];
         next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
       }

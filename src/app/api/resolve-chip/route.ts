@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
           { role: "user", content: query },
         ],
         temperature: 0,
-        max_tokens: 48,
+        max_tokens: 80,
         response_format: { type: "json_object" },
       }),
     });
@@ -83,7 +83,12 @@ export async function POST(req: NextRequest) {
         ? raw.label.trim()
         : null;
     const label = rawLabel ?? null;
-    const route = (VALID_ROUTES as readonly string[]).includes(raw.route) ? raw.route as string : null;
+
+    // Normalize route: strip surrounding/internal spaces + lowercase so minor model drift doesn't break matching
+    const normalizedRoute = typeof raw.route === "string"
+      ? raw.route.trim().toLowerCase().replace(/\s+/g, "")
+      : null;
+    const route = VALID_ROUTES.find(r => r === normalizedRoute) ?? null;
 
     if (!label || !route) return NextResponse.json({ label: null });
 
