@@ -13,7 +13,8 @@ npm run dev
 
 Requires `.env.local` with:
 ```
-GROQ_API_KEY=...   # free key at https://console.groq.com/keys
+GROQ_API_KEY=...    # free key at https://console.groq.com/keys
+RESEND_API_KEY=...  # free key at https://resend.com
 ```
 
 ---
@@ -104,6 +105,28 @@ The homepage has a collapsed "hero-only" state and an extended state that reveal
 
 ---
 
+### Contact Form
+The contact form (inside the homepage contact section) POSTs to `/api/contact`, which sends the message via Resend. No email client required on the visitor's end.
+
+**Validation — both client and server:**
+| Field | Rules |
+|---|---|
+| Name | Required, ≤100 chars |
+| Email | Required, ≤254 chars, must match `x@x.x` format |
+| Message | Required, ≤2000 chars |
+| All fields | ASCII control characters stripped (prevents hidden injection sequences) |
+
+**Rate limiting:** 3 submissions per IP per minute (server), 10s cooldown between submits (client).
+
+**Resend setup:**
+- FROM address: `ATTA Logical <noreply@attalogical.com>`
+- Reply-To is set to the sender's email, so replying in your inbox goes directly to them
+- `RESEND_API_KEY` must be set in `.env.local` and Vercel Environment Variables
+
+**Domain verification status:** complete — `attalogical.com` verified in Resend dashboard.
+
+---
+
 ## Key files
 
 | File | Purpose |
@@ -114,7 +137,9 @@ The homepage has a collapsed "hero-only" state and an extended state that reveal
 | `src/app/layout.tsx` | Root layout — `#page-blur-layer`, providers |
 | `src/app/PageTransition.tsx` | Route change blur/fade handler |
 | `src/app/api/resolve-chip/route.ts` | Groq AI chip resolver API route |
+| `src/app/api/contact/route.ts` | Contact form email sender (Resend) |
 | `src/lib/chipResolver.ts` | Instant keyword resolver (CKORE, Laugical) |
+| `src/lib/validation.ts` | Shared input validation (client + server) |
 | `src/hooks/useTransitionRouter.ts` | Programmatic navigation with blur trigger |
 | `src/hooks/useIsMobile.ts` | SSR-safe viewport breakpoint hook |
 
@@ -122,7 +147,7 @@ The homepage has a collapsed "hero-only" state and an extended state that reveal
 
 ## Known gotchas
 
-- **`.env.local` is gitignored** — after cloning or on a new machine, create it manually and add `GROQ_API_KEY`. Also add the key to Vercel's Environment Variables dashboard and redeploy, otherwise the AI chip system returns null silently on production.
+- **`.env.local` is gitignored** — after cloning or on a new machine, create it manually and add both `GROQ_API_KEY` and `RESEND_API_KEY`. Add both to Vercel's Environment Variables dashboard and redeploy. Missing `GROQ_API_KEY` silently breaks the AI chip system. Missing `RESEND_API_KEY` makes the contact form return a 503.
 - **Nested git repos warning** — Claude Code creates temporary worktrees under `.claude/worktrees/`. These are gitignored. If `git add *` warns about embedded repositories, run `git rm --cached .claude/worktrees/<name>` to unstage them.
 - **Large files** — `*.rar`, `*.zip`, `*.tar.gz` are gitignored. GitHub rejects files over 100 MB.
 

@@ -9,7 +9,7 @@ import { useTransitionRouter } from "@/hooks/useTransitionRouter";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
-import { validateName, validateEmail, validateMessage, sanitizeForMailto, createSubmitThrottle } from "@/lib/validation";
+import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
 
 const BAD_WORDS = new Set([
   "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
@@ -798,17 +798,15 @@ export default function Home() {
 
   const handleClosePopup = useCallback(() => setExpandedProject(null), []);
 
-  function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
 
-    // Client-side throttle — mailto forms have no server; this prevents rapid double-sends
     if (!contactThrottle.current.canSubmit()) {
       setFormError("Please wait a moment before sending again.");
       return;
     }
 
-    // Schema validation: reject oversized or malformed input before building the mailto
     const nameCheck = validateName(formName);
     if (!nameCheck.ok) { setFormError(nameCheck.error!); return; }
     const emailCheck = validateEmail(formEmail);
@@ -816,11 +814,22 @@ export default function Home() {
     const msgCheck = validateMessage(formMessage);
     if (!msgCheck.ok) { setFormError(msgCheck.error!); return; }
 
-    const subject = "Enquiry via ATTAlogical";
-    const body = `Name: ${sanitizeForMailto(formName)}\nEmail: ${sanitizeForMailto(formEmail)}\n\n${sanitizeForMailto(formMessage)}`;
-    window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    contactThrottle.current.record();
-    setFormSubmitted(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error ?? "Something went wrong. Try again.");
+        return;
+      }
+      contactThrottle.current.record();
+      setFormSubmitted(true);
+    } catch {
+      setFormError("Could not send message. Check your connection and try again.");
+    }
   }
 
   const goToContact = useCallback(() => {
@@ -1608,7 +1617,7 @@ export default function Home() {
                     {formSubmitted ? (
                       <div className="sub-contact-thanks">
                         <p className="sub-contact-thanks-title">Message sent.</p>
-                        <p className="sub-contact-thanks-note">Your email client should have opened. If not, write to Boelie@attalogical.com directly.</p>
+                        <p className="sub-contact-thanks-note">I&apos;ll get back to you soon.</p>
                       </div>
                     ) : (
                       <form className="sub-contact-form" onSubmit={handleContactFormSubmit}>

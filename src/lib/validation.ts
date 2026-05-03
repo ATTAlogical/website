@@ -1,8 +1,6 @@
 // Schema-based input validation for all user-facing forms.
-// Forms on this site use client-side mailto — there are no API routes or server handlers,
-// so server-side rate limiting is not applicable. The guards below prevent malformed or
-// oversized input from reaching the mailto handler and protect against reflected XSS in
-// the query string. All limits follow OWASP recommendations.
+// Used on both the client (immediate feedback) and the server (/api/contact).
+// All limits follow OWASP recommendations.
 
 // Strip ASCII control characters (0x00–0x1F, 0x7F) that have no place in form text.
 // These can be used to inject hidden sequences into mailto bodies.
@@ -40,12 +38,6 @@ export function validateMessage(raw: string, maxLength = 2000): ValidationResult
   if (!v) return { ok: false, error: "Message is required." };
   if (v.length > maxLength) return { ok: false, error: `Message must be ${maxLength} characters or fewer.` };
   return { ok: true };
-}
-
-// Sanitize a value for safe inclusion in a mailto URI body.
-// encodeURIComponent is always applied by callers, but this strips control chars first.
-export function sanitizeForMailto(raw: string): string {
-  return stripControlChars(raw).trim();
 }
 
 // Simple client-side submission throttle.
