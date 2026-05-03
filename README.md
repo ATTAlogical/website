@@ -43,12 +43,14 @@ The search bar on the homepage resolves typed queries into floating "chips" that
 
 **Label voice:** terse, technical, editorial — concept nodes not menu items. Examples: "Build Index", "Rate Card", "Open Channel", "Stack". The AI is instructed never to use "ATTA Logical" in a label; queries about the brand itself produce "Logical".
 
-**Route normalization:** AI output is lowercased and whitespace-stripped before matching against the valid routes list, so minor model drift (spaces, casing) doesn't silently produce null.
+**Route normalization:** AI output is lowercased and all whitespace stripped before matching against the valid routes list, so minor model drift (spaces, casing) doesn't silently produce null. `max_tokens` is 80 to prevent JSON truncation on longer routes.
+
+**Environment:** `GROQ_API_KEY` must be set in `.env.local` locally and in the Vercel project's Environment Variables for production. Without it the route silently returns `{ label: null }` and every query shows the question mark. Key is never committed — `.env*` is gitignored.
 
 **Chip display limits:**
 - Desktop: max 3 chips on screen. A 4th entry evicts the oldest.
 - Mobile: max 1 chip.
-- Implemented via `isMobileRef` inside `pushChip` — ref stays in sync with the `isMobile` state via `useEffect`.
+- `isMobile` is read directly from the `pushChip` closure (not a ref) so the limit is always correct at call time. Mobile chip render also hard-caps to `.slice(-1)` as a safety net against stale state.
 
 **Chip orbital positioning:** each chip floats at a point on an ellipse orbit around the search glass. CKORE/Laugical have fixed angular phases (`CHIP_PHASES`). AI-generated chips use a deterministic hash (`labelPhase(label)`) so the same label always lands at the same position.
 
@@ -115,6 +117,14 @@ The homepage has a collapsed "hero-only" state and an extended state that reveal
 | `src/lib/chipResolver.ts` | Instant keyword resolver (CKORE, Laugical) |
 | `src/hooks/useTransitionRouter.ts` | Programmatic navigation with blur trigger |
 | `src/hooks/useIsMobile.ts` | SSR-safe viewport breakpoint hook |
+
+---
+
+## Known gotchas
+
+- **`.env.local` is gitignored** — after cloning or on a new machine, create it manually and add `GROQ_API_KEY`. Also add the key to Vercel's Environment Variables dashboard and redeploy, otherwise the AI chip system returns null silently on production.
+- **Nested git repos warning** — Claude Code creates temporary worktrees under `.claude/worktrees/`. These are gitignored. If `git add *` warns about embedded repositories, run `git rm --cached .claude/worktrees/<name>` to unstage them.
+- **Large files** — `*.rar`, `*.zip`, `*.tar.gz` are gitignored. GitHub rejects files over 100 MB.
 
 ---
 

@@ -769,12 +769,12 @@ export default function Home() {
   const isMobileRef = useRef(false);
 
   const pushChip = useCallback((label: string, href?: string, section?: string) => {
+    const maxChips = isMobile ? 1 : 3;
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
       const active = prev.filter(c => c.state !== "exiting");
       if (active.some(c => c.label === label)) return prev;
-      const maxChips = isMobileRef.current ? 1 : 3;
       let next = [...prev];
       if (active.length >= maxChips) {
         const oldest = active[0];
@@ -783,7 +783,7 @@ export default function Home() {
       next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", href, section });
       return next;
     });
-  }, []);
+  }, [isMobile]);
 
   const handleChipClick = useCallback((label: string, href?: string, section?: string) => {
     if (href) { navigate(href); return; }
@@ -1163,7 +1163,7 @@ export default function Home() {
             {/* Active chip — swipes in/out from opposite sides */}
             <div style={{ position: "absolute", top: "calc(50% + 22vw)", left: 0, right: 0, display: "flex", justifyContent: "center", overflow: "hidden" }}>
               <AnimatePresence mode="popLayout">
-                {chips.filter(ch => ch.state !== "exiting").map(chip => (
+                {chips.filter(ch => ch.state !== "exiting").slice(-1).map(chip => (
                   <motion.button
                     key={chip.id}
                     initial={chipSubmitCount <= 1
