@@ -38,17 +38,28 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Email service not configured" }, { status: 503 });
 
-  const { error } = await resend.emails.send({
-    from: "ATTA Logical <noreply@attalogical.com>",
-    to: "Boelie@attalogical.com",
-    replyTo: email,
-    subject: `Enquiry via ATTAlogical — ${name}`,
-    text: `Name: ${name}\nEmail: ${email}\n\n${message}`,
-  });
+  const [inquiry, confirmation] = await Promise.all([
+    resend.emails.send({
+      from: "ATTA Logical <noreply@attalogical.com>",
+      to: "Boelie@attalogical.com",
+      replyTo: email,
+      subject: `Enquiry via ATTAlogical — ${name}`,
+      text: `Name: ${name}\nEmail: ${email}\n\n${message}`,
+    }),
+    resend.emails.send({
+      from: "ATTA Logical <noreply@attalogical.com>",
+      to: email,
+      subject: "Message received — ATTA Logical",
+      text: `Hi ${name},\n\nYour message has been received. Expect an answer within 1–3 business days.\n\n— Boelie\nattalogical.com`,
+    }),
+  ]);
 
-  if (error) {
-    console.error("Resend error:", error);
+  if (inquiry.error) {
+    console.error("Resend inquiry error:", inquiry.error);
     return NextResponse.json({ error: "Failed to send" }, { status: 500 });
+  }
+  if (confirmation.error) {
+    console.error("Resend confirmation error:", confirmation.error);
   }
 
   return NextResponse.json({ ok: true });

@@ -1617,7 +1617,7 @@ export default function Home() {
                     {formSubmitted ? (
                       <div className="sub-contact-thanks">
                         <p className="sub-contact-thanks-title">Message sent.</p>
-                        <p className="sub-contact-thanks-note">I&apos;ll get back to you soon.</p>
+                        <p className="sub-contact-thanks-note">Check your email for a confirmation.</p>
                       </div>
                     ) : (
                       <form className="sub-contact-form" onSubmit={handleContactFormSubmit}>
