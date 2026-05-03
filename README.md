@@ -118,9 +118,16 @@ The contact form (inside the homepage contact section) POSTs to `/api/contact`, 
 
 **Rate limiting:** 3 submissions per IP per minute (server), 10s cooldown between submits (client).
 
+**Two emails sent per submission (via `Promise.all`):**
+1. **Inquiry** → `Boelie@attalogical.com` — subject `Enquiry via ATTAlogical — {name}`, Reply-To set to sender so inbox reply goes directly to them
+2. **Confirmation** → visitor's email — subject `Message received — ATTA Logical`, body tells them to expect an answer within 1–3 business days
+
+If the confirmation fails it only logs; the request still returns `{ ok: true }` so the visitor isn't shown an error.
+
+**Success message shown to visitor:** `"Check your email for a confirmation."`
+
 **Resend setup:**
 - FROM address: `ATTA Logical <noreply@attalogical.com>`
-- Reply-To is set to the sender's email, so replying in your inbox goes directly to them
 - `RESEND_API_KEY` must be set in `.env.local` and Vercel Environment Variables
 
 **Domain verification status:** complete — `attalogical.com` verified in Resend dashboard.
