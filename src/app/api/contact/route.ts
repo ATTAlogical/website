@@ -41,16 +41,16 @@ export async function POST(req: NextRequest) {
   const [inquiry, confirmation] = await Promise.all([
     resend.emails.send({
       from: "ATTA Logical <noreply@attalogical.com>",
-      to: "Boelie@attalogical.com",
+      to: "boelie@attalogical.com",
       replyTo: email,
-      subject: `Enquiry via ATTAlogical — ${name}`,
+      subject: `Enquiry via ATTAlogical - ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\n${message}`,
     }),
     resend.emails.send({
       from: "ATTA Logical <noreply@attalogical.com>",
       to: email,
       subject: "Message received — ATTA Logical",
-      text: `Hi ${name},\n\nYour message has been received. Expect an answer within 1–3 business days.\n\n— Boelie\nattalogical.com`,
+      text: `Hi ${name},\n\nYour message has been received. Expect an answer within 1-3 business days.\n\nBoelie\nattalogical.com`,
     }),
   ]);
 
