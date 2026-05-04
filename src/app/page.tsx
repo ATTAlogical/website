@@ -788,9 +788,10 @@ export default function Home() {
   const handleChipClick = useCallback((label: string, href?: string, section?: string) => {
     if (href) { navigate(href); return; }
     if (section === "work") { setShowExtended(true); setScrollToWork(true); return; }
-    if (section === "contact") { setShowExtended(true); setScrollToContact(true); return; }
-    // Instant-resolver chips (CKORE, Laugical) — special behaviors
+    if (section === "contact") { setContactClicks(prev => prev + 1); return; }
+    // Instant-resolver chips (CKORE, Laugical, logical) — special behaviors
     if (label === "CKORE") { setShowCkoreConfirm(true); return; }
+    if (label === "logical") { setShowExtended(true); return; }
     if (label === "Laugical") {
       setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
     }
@@ -1426,6 +1427,7 @@ export default function Home() {
                     if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
                     if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
                     setSubmittedQuery(prev => ({ value: searchValue, nonce: (prev?.nonce ?? 0) + 1 }));
+                    setSearchValue("");
                   }}
                   onFocus={() => { setShowSearch(true); setIsFocused(true); }}
                   onBlur={() => setIsFocused(false)}

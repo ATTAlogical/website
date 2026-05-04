@@ -20,6 +20,10 @@ const CHIPS_DATA = [
     ],
   },
   {
+    label: "logical",
+    keywords: ["logical", "logic", "atta", "attalogical"],
+  },
+  {
     label: "CKORE",
     keywords: [
       "ckore",
