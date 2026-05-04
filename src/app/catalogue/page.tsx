@@ -76,7 +76,7 @@ const ProjectSection = memo(function ProjectSection({
       style={{ paddingTop: isMobile ? "10vh" : "14vh", paddingBottom: isMobile ? "6vh" : "10vh" }}
     >
       <motion.div style={{ paddingLeft: pad, marginBottom: "2.5rem", y: headerY, opacity: headerOpacity }}>
-        <p style={{ fontSize: "0.57rem", letterSpacing: "0.16em", color: "rgba(0,0,0,0.3)", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: '"Playfair Display", serif' }}>
+        <p style={{ fontSize: "0.57rem", letterSpacing: "0.16em", color: "rgba(0,0,0,0.55)", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: '"Playfair Display", serif' }}>
           {project.subtitle}
         </p>
         <h2 style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", fontWeight: 400, color: "#000", letterSpacing: "0.02em", lineHeight: 1.1, fontFamily: '"Playfair Display", serif' }}>
@@ -232,7 +232,7 @@ export default function Catalogue() {
             {isMobile ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.15rem" }}>
+                  <p style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(0,0,0,0.55)", textTransform: "uppercase", marginBottom: "0.15rem" }}>
                     {active.subtitle}
                   </p>
                   <h3 style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 400, color: "#000", letterSpacing: "0.02em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -242,7 +242,7 @@ export default function Catalogue() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
                   <div style={{ display: "flex", gap: "0.22rem" }}>
                     {active.tags.slice(0, 2).map(tag => (
-                      <span key={tag} style={{ fontSize: "0.44rem", letterSpacing: "0.06em", padding: "0.12rem 0.36rem", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "20px", color: "rgba(0,0,0,0.35)", whiteSpace: "nowrap" }}>
+                      <span key={tag} style={{ fontSize: "0.44rem", letterSpacing: "0.06em", padding: "0.12rem 0.36rem", border: "1px solid rgba(0,0,0,0.18)", borderRadius: "20px", color: "rgba(0,0,0,0.55)", whiteSpace: "nowrap" }}>
                         {tag}
                       </span>
                     ))}
@@ -258,7 +258,7 @@ export default function Catalogue() {
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "3rem", flexWrap: "wrap" }}>
                 <div>
-                  <p style={{ fontSize: "0.56rem", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textTransform: "uppercase", marginBottom: "0.4rem" }}>{active.subtitle}</p>
+                  <p style={{ fontSize: "0.56rem", letterSpacing: "0.15em", color: "rgba(0,0,0,0.55)", textTransform: "uppercase", marginBottom: "0.4rem" }}>{active.subtitle}</p>
                   <h3 style={{ fontSize: "clamp(1.1rem, 2vw, 1.55rem)", fontWeight: 400, color: "#000", letterSpacing: "0.02em", lineHeight: 1.15, marginBottom: active.href ? "0.6rem" : 0 }}>
                     {active.title}
                   </h3>
@@ -270,10 +270,10 @@ export default function Catalogue() {
                   )}
                 </div>
                 <div style={{ maxWidth: "420px", textAlign: "right" }}>
-                  <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.42)", lineHeight: 1.75, marginBottom: "0.75rem", letterSpacing: "0.01em" }}>{active.description}</p>
+                  <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.65)", lineHeight: 1.75, marginBottom: "0.75rem", letterSpacing: "0.01em" }}>{active.description}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", justifyContent: "flex-end" }}>
                     {active.tags.slice(0, 5).map(tag => (
-                      <span key={tag} style={{ fontSize: "0.52rem", letterSpacing: "0.07em", padding: "0.18rem 0.48rem", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "20px", color: "rgba(0,0,0,0.35)" }}>
+                      <span key={tag} style={{ fontSize: "0.52rem", letterSpacing: "0.07em", padding: "0.18rem 0.48rem", border: "1px solid rgba(0,0,0,0.18)", borderRadius: "20px", color: "rgba(0,0,0,0.55)" }}>
                         {tag}
                       </span>
                     ))}

@@ -122,8 +122,15 @@ function labelPhase(label: string): number {
   return (h / 0xFFFFFFFF) * Math.PI * 2;
 }
 
+function getShell(label: string, href?: string, section?: string): Shell {
+  if (label === "Laugical" || label === "CKORE" || label === "logical") return 3;
+  if (href || section === "contact") return 2;
+  return 1;
+}
+
 function getChipPosition(
   label: string,
+  shell: Shell,
   angle: number,
   W: number,
   H: number,
@@ -132,13 +139,15 @@ function getChipPosition(
   const phase = CHIP_PHASES[label] ?? labelPhase(label);
   const a = angle + phase;
 
-  // Orbit centered on the glass, radii just outside glass edges, capped at viewport
   const cx = glassRect ? (glassRect.left + glassRect.right) / 2 : W / 2;
   const cy = glassRect ? (glassRect.top + glassRect.bottom) / 2 : H / 2;
   const glassRx = glassRect ? (glassRect.right - glassRect.left) / 2 : W * 0.375;
   const glassRy = glassRect ? (glassRect.bottom - glassRect.top) / 2 : H * 0.375;
-  const orbitRx = Math.min(glassRx + 100, W / 2 - 60);
-  const orbitRy = Math.min(glassRy + 70, H / 2 - 40);
+  // Each shell orbits at a different radius — inner hugs the glass, valence is far out
+  const padX = shell === 1 ? 42 : shell === 2 ? 100 : 168;
+  const padY = shell === 1 ? 26 : shell === 2 ? 70 : 115;
+  const orbitRx = Math.min(glassRx + padX, W / 2 - 60);
+  const orbitRy = Math.min(glassRy + padY, H / 2 - 40);
 
   return {
     x: cx + orbitRx * Math.cos(a),
@@ -147,6 +156,7 @@ function getChipPosition(
 }
 
 type ChipState = "entering" | "visible" | "exiting";
+type Shell = 1 | 2 | 3; // inner (AI section), middle (pages + contact), valence (brand)
 
 type Chip = {
   id: string;
@@ -154,6 +164,7 @@ type Chip = {
   state: ChipState;
   href?: string;
   section?: string;
+  shell: Shell;
 };
 
 // Positioned absolutely so it never shifts the "ATTA logical" text when it appears
@@ -769,21 +780,22 @@ export default function Home() {
   const isMobileRef = useRef(false);
 
   const pushChip = useCallback((label: string, href?: string, section?: string) => {
-    const maxChips = isMobile ? 1 : 3;
+    const shell = getShell(label, href, section);
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
       const active = prev.filter(c => c.state !== "exiting");
       if (active.some(c => c.label === label)) return prev;
       let next = [...prev];
-      if (active.length >= maxChips) {
-        const oldest = active[0];
-        next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
+      // One chip per shell — evict the existing one in the same shell
+      const sameShell = active.find(c => c.shell === shell);
+      if (sameShell) {
+        next = next.map(c => c.id === sameShell.id ? { ...c, state: "exiting" as ChipState } : c);
       }
-      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", href, section });
+      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", href, section, shell });
       return next;
     });
-  }, [isMobile]);
+  }, []);
 
   const handleChipClick = useCallback((label: string, href?: string, section?: string) => {
     if (href) { navigate(href); return; }
@@ -907,7 +919,7 @@ export default function Home() {
   useEffect(() => {
     if (!mounted) return;
     if (isMobile) { setShowSearch(true); return; }
-    const delay = 9000 + Math.random() * 3000;
+    const delay = 3000;
     const t = setTimeout(() => setShowSearch(true), delay);
     return () => clearTimeout(t);
   }, [mounted, isMobile]);
@@ -980,7 +992,7 @@ export default function Home() {
 
       // Chips
       chipsRef.current.filter(c => c.state === "visible").forEach(chip => {
-        const pos = getChipPosition(chip.label, angle, W, H, glassRectRef.current);
+        const pos = getChipPosition(chip.label, chip.shell, angle, W, H, glassRectRef.current);
         const el = chipElsRef.current.get(chip.id);
         if (el) el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
       });
@@ -995,7 +1007,7 @@ export default function Home() {
     chips.filter(c => c.state === "entering").forEach(chip => {
       const el = chipElsRef.current.get(chip.id);
       if (el) {
-        const pos = getChipPosition(chip.label, teAngleNow(), window.innerWidth, window.innerHeight, glassRectRef.current);
+        const pos = getChipPosition(chip.label, chip.shell, teAngleNow(), window.innerWidth, window.innerHeight, glassRectRef.current);
         el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
       }
     });
@@ -1051,13 +1063,13 @@ export default function Home() {
           pushChip(aiLabel, href, section);
         } else {
           setShowQuestionMark(true);
-          setTimeout(() => setShowQuestionMark(false), 2400);
+          setTimeout(() => setShowQuestionMark(false), 700);
         }
       })
       .catch(() => {
         setIsAiLoading(false);
         setShowQuestionMark(true);
-        setTimeout(() => setShowQuestionMark(false), 2400);
+        setTimeout(() => setShowQuestionMark(false), 700);
       });
   }, [submittedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1139,7 +1151,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-m" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1162,11 +1174,22 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-mr" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
                 </div>
+                <p className="pointer-events-none" style={{
+                  marginTop: "1.2em",
+                  fontFamily: '"Playfair Display", serif',
+                  fontSize: "clamp(0.5rem, 2.8vw, 0.65rem)",
+                  letterSpacing: "0.22em",
+                  color: "rgba(0,0,0,0.32)",
+                  textTransform: "uppercase",
+                  userSelect: "none",
+                }}>
+                  Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
+                </p>
               </div>
             </div>
 
@@ -1331,7 +1354,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-d" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1357,11 +1380,22 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-dr" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
                 </div>
+                <p className="pointer-events-none" style={{
+                  marginTop: "1.4em",
+                  fontFamily: '"Playfair Display", serif',
+                  fontSize: "clamp(0.5rem, 0.8vw, 0.68rem)",
+                  letterSpacing: "0.24em",
+                  color: "rgba(0,0,0,0.32)",
+                  textTransform: "uppercase",
+                  userSelect: "none",
+                }}>
+                  Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
+                </p>
               </div>
 
               {/* Contact email surface */}
@@ -1728,6 +1762,32 @@ export default function Home() {
               </motion.div>
             </div>
           </section>
+
+          {/* Footer */}
+          <footer style={{
+            padding: isMobile ? "8vw 6vw" : "3.5vw 12vw",
+            borderTop: "1px solid rgba(0,0,0,0.06)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+            fontFamily: '"Playfair Display", serif',
+          }}>
+            <span style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.22)", textTransform: "uppercase" }}>
+              © {new Date().getFullYear()} ATTA logical — Boelie van Camp
+            </span>
+            <div style={{ display: "flex", gap: "1.8rem" }}>
+              {[
+                { label: "Catalogue", href: "/catalogue" },
+                { label: "Subscriptions", href: "/subscriptions" },
+              ].map(({ label, href }) => (
+                <Link key={label} href={href} style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textDecoration: "none", textTransform: "uppercase" }}>
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </footer>
 
         </div>
       )}
