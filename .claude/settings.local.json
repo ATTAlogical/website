@@ -9,7 +9,9 @@
       "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"C:\\\\Users\\\\bilag\\\\ATTA logical\\\\attalogical-site\\\\src\\\\app\\\\img\\\\pngwing.com\\(1\\).png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))",
       "Bash(xargs grep *)",
       "Bash(node -e \"const r = require\\('./node_modules/react/package.json'\\); console.log\\(r.version\\)\")",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npx skills *)",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\bilag\\.claude\\projects\\c--Users-bilag-ATTA-logical-attalogical-site\\memory",
