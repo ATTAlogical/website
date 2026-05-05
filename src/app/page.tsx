@@ -809,8 +809,9 @@ export default function Home() {
       const innerActive = prev.filter(c => c.shell === 0 && c.state !== "exiting");
       if (innerActive.some(c => c.label === label)) return prev;
       let next = [...prev];
-      // Cycle out oldest inner chip when a new one arrives
-      if (innerActive.length >= 1) {
+      // Desktop: up to 3 inner chips; mobile: 1 at a time
+      const maxInner = isMobileRef.current ? 1 : 3;
+      if (innerActive.length >= maxInner) {
         const oldest = innerActive[0];
         next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
       }
