@@ -174,7 +174,6 @@ function getChipPosition(
 }
 
 type ChipState = "entering" | "visible" | "exiting";
-type Shell = 1 | 2 | 3; // inner (AI section), middle (pages + contact), valence (brand)
 
 type Chip = {
   id: string;
@@ -183,7 +182,6 @@ type Chip = {
   shell: 0 | 1 | 2;
   href?: string;
   section?: string;
-  shell: Shell;
 };
 
 // Positioned absolutely so it never shifts the "ATTA logical" text when it appears
@@ -799,7 +797,6 @@ export default function Home() {
   const isMobileRef = useRef(false);
 
   const pushChip = useCallback((label: string, href?: string, section?: string) => {
-    const shell = getShell(label, href, section);
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
