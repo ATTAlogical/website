@@ -1322,21 +1322,6 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              {/* Subtitle — directly below the mobile search bar */}
-              <p style={{
-                marginTop: "0.85em",
-                fontFamily: '"Playfair Display", serif',
-                fontStyle: "italic",
-                fontSize: "clamp(0.58rem, 3vw, 0.72rem)",
-                letterSpacing: "0.14em",
-                color: "rgba(0,0,0,0.26)",
-                textAlign: "center",
-                whiteSpace: "nowrap",
-                pointerEvents: "none",
-                userSelect: "none",
-              }}>
-                boelie van camp · software · design · music
-              </p>
             </div>
           </>
         ) : (
@@ -1519,21 +1504,6 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              {/* Subtitle — sits right below the search bar */}
-              <p style={{
-                marginTop: "0.9em",
-                fontFamily: '"Playfair Display", serif',
-                fontStyle: "italic",
-                fontSize: "clamp(0.58rem, 0.8vw, 0.72rem)",
-                letterSpacing: "0.16em",
-                color: "rgba(0,0,0,0.26)",
-                textAlign: "center",
-                whiteSpace: "nowrap",
-                pointerEvents: "none",
-                userSelect: "none",
-              }}>
-                boelie van camp · software · design · music
-              </p>
             </div>
           </>
         )}
