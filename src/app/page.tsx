@@ -941,6 +941,13 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [mounted, isMobile]);
 
+  // Nudge: "logical" chip appears 3 s after the search bar activates, once per session
+  useEffect(() => {
+    if (!showSearch) return;
+    const t = setTimeout(() => pushChip("logical"), 3000);
+    return () => clearTimeout(t);
+  }, [showSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!showSearch) return;
     const ph = PLACEHOLDERS[lang];
