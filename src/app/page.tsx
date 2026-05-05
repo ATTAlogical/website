@@ -109,21 +109,16 @@ const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
 
 // ── Atomic orbital chip system ────────────────────────────────────────────────
-// Shell 2 = valence (outermost) : Laugical, CKORE, logical  — brand pillars
-// Shell 1 = middle              : Store, Contact, …          — navigation
-// Shell 0 = inner               : AI-generated per query     — transient
+// Chips only appear when searched — their shell determines which ring they land in.
+// Shell 2 = valence (outermost) : brand pillars  — Laugical, CKORE, logical
+// Shell 1 = middle              : navigation      — Store, Contact, Subscriptions, Catalogue
+// Shell 0 = inner               : AI-generated    — everything else
 
-const SHELL_CHIPS: { shell: 1 | 2; label: string; href?: string; section?: string }[] = [
-  // Valence ring — 3 chips at 0°, 120°, 240°
-  { shell: 2, label: "Laugical", href: "/laugical" },
-  { shell: 2, label: "CKORE" },
-  { shell: 2, label: "logical" },
-  // Middle ring — 4 chips at 0°, 90°, 180°, 270°
-  { shell: 1, label: "Store",         href: "/laugical/store" },
-  { shell: 1, label: "Contact",       section: "contact" },
-  { shell: 1, label: "Subscriptions", href: "/subscriptions#plans" },
-  { shell: 1, label: "Catalogue",     href: "/catalogue" },
-];
+function getChipShell(label: string, href?: string, section?: string): 0 | 1 | 2 {
+  if (label === "Laugical" || label === "CKORE" || label === "logical") return 2;
+  if (href || section === "contact") return 1;
+  return 0;
+}
 
 function labelPhase(label: string): number {
   let h = 0;
@@ -158,14 +153,14 @@ function getChipPosition(
   // Orbit centered on the glass pane
   const cx = glassRect ? (glassRect.left + glassRect.right) / 2 : W / 2;
   const cy = glassRect ? (glassRect.top + glassRect.bottom) / 2 : H / 2;
-  const glassRx = glassRect ? (glassRect.right - glassRect.left) / 2 : W * 0.375;
-  const glassRy = glassRect ? (glassRect.bottom - glassRect.top) / 2 : H * 0.375;
 
-  // Shell-specific radii — outer is biggest, inner smallest
-  const offX = shell === 2 ? 140 : shell === 1 ? 85 : 38;
-  const offY = shell === 2 ? 95  : shell === 1 ? 58 : 26;
-  const orbitRx = Math.min(glassRx + offX, W / 2 - 60);
-  const orbitRy = Math.min(glassRy + offY, H / 2 - 40);
+  // Viewport-relative radii so shells are clearly distinct regardless of glass size.
+  // Outer shell uses ~44% of half-width, middle ~33%, inner ~20%.
+  // Clamped so nothing clips past 48px from viewport edge.
+  const frX = shell === 2 ? 0.44 : shell === 1 ? 0.33 : 0.20;
+  const frY = shell === 2 ? 0.40 : shell === 1 ? 0.30 : 0.18;
+  const orbitRx = Math.min(W * frX, W / 2 - 48);
+  const orbitRy = Math.min(H * frY, H / 2 - 48);
 
   return {
     x: cx + orbitRx * Math.cos(a),
@@ -797,22 +792,24 @@ export default function Home() {
   const isMobileRef = useRef(false);
 
   const pushChip = useCallback((label: string, href?: string, section?: string) => {
+    const shell = getChipShell(label, href, section);
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
-      // Skip if label already lives in a persistent shell (don't duplicate it in inner ring)
-      if (prev.some(c => c.shell !== 0 && c.label === label)) return prev;
-      // Inner-shell chips only — find active inner chips
-      const innerActive = prev.filter(c => c.shell === 0 && c.state !== "exiting");
-      if (innerActive.some(c => c.label === label)) return prev;
+      const active = prev.filter(c => c.state !== "exiting");
+      // Don't add duplicate in same shell
+      if (active.some(c => c.label === label)) return prev;
       let next = [...prev];
-      // Desktop: up to 3 inner chips; mobile: 1 at a time
-      const maxInner = isMobileRef.current ? 1 : 3;
-      if (innerActive.length >= maxInner) {
-        const oldest = innerActive[0];
-        next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
+      // One chip per shell — evict existing chip in this shell when a new one arrives.
+      // On mobile only allow 1 chip total (inner shell only).
+      if (isMobileRef.current) {
+        const any = active[0];
+        if (any) next = next.map(c => c.id === any.id ? { ...c, state: "exiting" as ChipState } : c);
+      } else {
+        const sameShell = active.find(c => c.shell === shell);
+        if (sameShell) next = next.map(c => c.id === sameShell.id ? { ...c, state: "exiting" as ChipState } : c);
       }
-      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", shell: 0, href, section });
+      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", shell, href, section });
       return next;
     });
   }, []);
@@ -1116,20 +1113,6 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [seriouslyEntry]);
 
-  // Populate valence + middle shells as soon as the component mounts
-  useEffect(() => {
-    if (!mounted) return;
-    setChips(
-      SHELL_CHIPS.map(sc => ({
-        id: `${sc.label}-persistent`,
-        label: sc.label,
-        state: "entering" as ChipState,
-        shell: sc.shell,
-        href: sc.href,
-        section: sc.section,
-      }))
-    );
-  }, [mounted]);
 
   if (!mounted) return null;
 
