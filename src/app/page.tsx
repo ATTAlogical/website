@@ -1068,8 +1068,8 @@ export default function Home() {
 
     if (isBadWord(q)) return;
 
-    const label = resolveChip(q);
-    if (label) { pushChip(label); return; }
+    const resolved = resolveChip(q);
+    if (resolved) { pushChip(resolved.label, resolved.href, resolved.section); return; }
 
     // Keyword match missed — ask the AI
     setIsAiLoading(true);
