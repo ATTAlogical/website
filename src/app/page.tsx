@@ -108,13 +108,22 @@ const CONTENT = {
 const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
 
-// Each chip orbits the glass pane on a shared ellipse, spread by phase.
-const CHIP_PHASES: Record<string, number> = {
-  Laugical: 0,
-  CKORE:    Math.PI * 0.5,
-  logical:  Math.PI,
-  Contact:  Math.PI * 1.5,
-};
+// ── Atomic orbital chip system ────────────────────────────────────────────────
+// Shell 2 = valence (outermost) : Laugical, CKORE, logical  — brand pillars
+// Shell 1 = middle              : Store, Contact, …          — navigation
+// Shell 0 = inner               : AI-generated per query     — transient
+
+const SHELL_CHIPS: { shell: 1 | 2; label: string; href?: string; section?: string }[] = [
+  // Valence ring — 3 chips at 0°, 120°, 240°
+  { shell: 2, label: "Laugical", href: "/laugical" },
+  { shell: 2, label: "CKORE" },
+  { shell: 2, label: "logical" },
+  // Middle ring — 4 chips at 0°, 90°, 180°, 270°
+  { shell: 1, label: "Store",         href: "/laugical/store" },
+  { shell: 1, label: "Contact",       section: "contact" },
+  { shell: 1, label: "Subscriptions", href: "/subscriptions#plans" },
+  { shell: 1, label: "Catalogue",     href: "/catalogue" },
+];
 
 function labelPhase(label: string): number {
   let h = 0;
@@ -122,23 +131,41 @@ function labelPhase(label: string): number {
   return (h / 0xFFFFFFFF) * Math.PI * 2;
 }
 
+function getShellPhase(label: string, shell: 0 | 1 | 2): number {
+  if (shell === 2) {
+    const idx = ["Laugical", "CKORE", "logical"].indexOf(label);
+    return idx >= 0 ? (idx / 3) * Math.PI * 2 : labelPhase(label);
+  }
+  if (shell === 1) {
+    const idx = ["Store", "Contact", "Subscriptions", "Catalogue"].indexOf(label);
+    return idx >= 0 ? (idx / 4) * Math.PI * 2 : labelPhase(label);
+  }
+  return labelPhase(label);
+}
+
 function getChipPosition(
   label: string,
+  shell: 0 | 1 | 2,
   angle: number,
   W: number,
   H: number,
   glassRect: DOMRect | null,
 ): { x: number; y: number } {
-  const phase = CHIP_PHASES[label] ?? labelPhase(label);
-  const a = angle + phase;
+  // Inner electrons orbit faster — gives the orbital speed gradient
+  const speedMult = shell === 0 ? 3 : shell === 1 ? 1.5 : 1;
+  const a = angle * speedMult + getShellPhase(label, shell);
 
-  // Orbit centered on the glass, radii just outside glass edges, capped at viewport
+  // Orbit centered on the glass pane
   const cx = glassRect ? (glassRect.left + glassRect.right) / 2 : W / 2;
   const cy = glassRect ? (glassRect.top + glassRect.bottom) / 2 : H / 2;
   const glassRx = glassRect ? (glassRect.right - glassRect.left) / 2 : W * 0.375;
   const glassRy = glassRect ? (glassRect.bottom - glassRect.top) / 2 : H * 0.375;
-  const orbitRx = Math.min(glassRx + 100, W / 2 - 60);
-  const orbitRy = Math.min(glassRy + 70, H / 2 - 40);
+
+  // Shell-specific radii — outer is biggest, inner smallest
+  const offX = shell === 2 ? 140 : shell === 1 ? 85 : 38;
+  const offY = shell === 2 ? 95  : shell === 1 ? 58 : 26;
+  const orbitRx = Math.min(glassRx + offX, W / 2 - 60);
+  const orbitRy = Math.min(glassRy + offY, H / 2 - 40);
 
   return {
     x: cx + orbitRx * Math.cos(a),
@@ -152,6 +179,7 @@ type Chip = {
   id: string;
   label: string;
   state: ChipState;
+  shell: 0 | 1 | 2;
   href?: string;
   section?: string;
 };
@@ -718,7 +746,7 @@ export default function Home() {
   const navigate = useTransitionRouter();
   const [mounted, setMounted] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [logicalNudgeDone, setLogicalNudgeDone] = useState(false);
+
   const [searchValue, setSearchValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [typedPlaceholder, setTypedPlaceholder] = useState("");
@@ -772,14 +800,18 @@ export default function Home() {
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
-      const active = prev.filter(c => c.state !== "exiting");
-      if (active.some(c => c.label === label)) return prev;
+      // Skip if label already lives in a persistent shell (don't duplicate it in inner ring)
+      if (prev.some(c => c.shell !== 0 && c.label === label)) return prev;
+      // Inner-shell chips only — find active inner chips
+      const innerActive = prev.filter(c => c.shell === 0 && c.state !== "exiting");
+      if (innerActive.some(c => c.label === label)) return prev;
       let next = [...prev];
-      if (active.length >= 1) {
-        const oldest = active[0];
+      // Cycle out oldest inner chip when a new one arrives
+      if (innerActive.length >= 1) {
+        const oldest = innerActive[0];
         next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
       }
-      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", href, section });
+      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", shell: 0, href, section });
       return next;
     });
   }, []);
@@ -967,9 +999,9 @@ export default function Home() {
         }
       }
 
-      // Chips
+      // Chips — each shell orbits at its own speed (inner fastest)
       chipsRef.current.filter(c => c.state === "visible").forEach(chip => {
-        const pos = getChipPosition(chip.label, angle, W, H, glassRectRef.current);
+        const pos = getChipPosition(chip.label, chip.shell, angle, W, H, glassRectRef.current);
         const el = chipElsRef.current.get(chip.id);
         if (el) el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
       });
@@ -984,7 +1016,7 @@ export default function Home() {
     chips.filter(c => c.state === "entering").forEach(chip => {
       const el = chipElsRef.current.get(chip.id);
       if (el) {
-        const pos = getChipPosition(chip.label, teAngleNow(), window.innerWidth, window.innerHeight, glassRectRef.current);
+        const pos = getChipPosition(chip.label, chip.shell, teAngleNow(), window.innerWidth, window.innerHeight, glassRectRef.current);
         el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
       }
     });
@@ -1073,14 +1105,20 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [seriouslyEntry]);
 
+  // Populate valence + middle shells as soon as the component mounts
   useEffect(() => {
-    if (!showSearch || logicalNudgeDone) return;
-    const t = setTimeout(() => {
-      setSubmittedQuery(prev => ({ value: "logical", nonce: (prev?.nonce ?? 0) + 1 }));
-      setLogicalNudgeDone(true);
-    }, 6000);
-    return () => clearTimeout(t);
-  }, [showSearch, logicalNudgeDone]);
+    if (!mounted) return;
+    setChips(
+      SHELL_CHIPS.map(sc => ({
+        id: `${sc.label}-persistent`,
+        label: sc.label,
+        state: "entering" as ChipState,
+        shell: sc.shell,
+        href: sc.href,
+        section: sc.section,
+      }))
+    );
+  }, [mounted]);
 
   if (!mounted) return null;
 
@@ -1159,10 +1197,10 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Active chip — swipes in/out from opposite sides */}
+            {/* Active chip — swipes in/out from opposite sides (mobile: inner-shell only) */}
             <div style={{ position: "absolute", top: "calc(50% + 22vw)", left: 0, right: 0, display: "flex", justifyContent: "center", overflow: "hidden" }}>
               <AnimatePresence mode="popLayout">
-                {chips.filter(ch => ch.state !== "exiting").map(chip => (
+                {chips.filter(ch => ch.shell === 0 && ch.state !== "exiting").map(chip => (
                   <motion.button
                     key={chip.id}
                     initial={chipSubmitCount <= 1
@@ -1215,7 +1253,7 @@ export default function Home() {
             </div>
 
             {/* Search bar — same underline style as desktop, anchored to bottom */}
-            <div style={{ position: "absolute", bottom: "max(4vh, env(safe-area-inset-bottom, 4vh))", left: "50%", transform: "translateX(-50%)" }}>
+            <div style={{ position: "absolute", bottom: "max(4vh, env(safe-area-inset-bottom, 4vh))", left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ position: "relative" }}>
                 <span aria-hidden style={{
                   position: "absolute", top: "50%", left: "50%",
@@ -1278,6 +1316,22 @@ export default function Home() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Subtitle — directly below the mobile search bar */}
+              <p style={{
+                marginTop: "0.85em",
+                fontFamily: '"Playfair Display", serif',
+                fontStyle: "italic",
+                fontSize: "clamp(0.58rem, 3vw, 0.72rem)",
+                letterSpacing: "0.14em",
+                color: "rgba(0,0,0,0.26)",
+                textAlign: "center",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+                userSelect: "none",
+              }}>
+                boelie van camp · software · design · music
+              </p>
             </div>
           </>
         ) : (
@@ -1388,7 +1442,8 @@ export default function Home() {
 
             {/* Search bar */}
             <div className="absolute inset-0 flex items-end justify-center pointer-events-none" style={{ paddingBottom: "12vh" }}>
-              <div className="relative pointer-events-auto" style={{
+              <div className="pointer-events-auto" style={{
+                display: "flex", flexDirection: "column", alignItems: "center",
                 opacity: showSearch ? 1 : 0,
                 transform: showSearch ? "translateY(0)" : "translateY(8px)",
                 transition: "opacity 2.5s ease-in-out, transform 2.5s ease-in-out",
@@ -1446,6 +1501,22 @@ export default function Home() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Subtitle — sits right below the search bar */}
+              <p style={{
+                marginTop: "0.9em",
+                fontFamily: '"Playfair Display", serif',
+                fontStyle: "italic",
+                fontSize: "clamp(0.58rem, 0.8vw, 0.72rem)",
+                letterSpacing: "0.16em",
+                color: "rgba(0,0,0,0.26)",
+                textAlign: "center",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+                userSelect: "none",
+              }}>
+                boelie van camp · software · design · music
+              </p>
             </div>
           </>
         )}
