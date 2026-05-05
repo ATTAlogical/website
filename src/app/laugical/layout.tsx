@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LaugicalCartProvider } from "@/context/LaugicalCart";
+import CartDrawer from "./CartDrawer";
 
 export const metadata: Metadata = {
   title: "laugical store",
@@ -11,5 +12,10 @@ export default function LaugicalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <LaugicalCartProvider>{children}</LaugicalCartProvider>;
+  return (
+    <LaugicalCartProvider>
+      {children}
+      <CartDrawer />
+    </LaugicalCartProvider>
+  );
 }
