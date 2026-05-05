@@ -9,7 +9,7 @@ import { useTransitionRouter } from "@/hooks/useTransitionRouter";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
-import { validateName, validateEmail, validateMessage, sanitizeForMailto, createSubmitThrottle } from "@/lib/validation";
+import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
 
 const BAD_WORDS = new Set([
   "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
@@ -109,21 +109,16 @@ const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
 
 // ── Atomic orbital chip system ────────────────────────────────────────────────
-// Shell 2 = valence (outermost) : Laugical, CKORE, logical  — brand pillars
-// Shell 1 = middle              : Store, Contact, …          — navigation
-// Shell 0 = inner               : AI-generated per query     — transient
+// Chips only appear when searched — their shell determines which ring they land in.
+// Shell 2 = valence (outermost) : brand pillars  — Laugical, CKORE, logical
+// Shell 1 = middle              : navigation      — Store, Contact, Subscriptions, Catalogue
+// Shell 0 = inner               : AI-generated    — everything else
 
-const SHELL_CHIPS: { shell: 1 | 2; label: string; href?: string; section?: string }[] = [
-  // Valence ring — 3 chips at 0°, 120°, 240°
-  { shell: 2, label: "Laugical", href: "/laugical" },
-  { shell: 2, label: "CKORE" },
-  { shell: 2, label: "logical" },
-  // Middle ring — 4 chips at 0°, 90°, 180°, 270°
-  { shell: 1, label: "Store",         href: "/laugical/store" },
-  { shell: 1, label: "Contact",       section: "contact" },
-  { shell: 1, label: "Subscriptions", href: "/subscriptions#plans" },
-  { shell: 1, label: "Catalogue",     href: "/catalogue" },
-];
+function getChipShell(label: string, href?: string, section?: string): 0 | 1 | 2 {
+  if (label === "Laugical" || label === "CKORE" || label === "logical") return 2;
+  if (href || section === "contact") return 1;
+  return 0;
+}
 
 function labelPhase(label: string): number {
   let h = 0;
@@ -158,14 +153,14 @@ function getChipPosition(
   // Orbit centered on the glass pane
   const cx = glassRect ? (glassRect.left + glassRect.right) / 2 : W / 2;
   const cy = glassRect ? (glassRect.top + glassRect.bottom) / 2 : H / 2;
-  const glassRx = glassRect ? (glassRect.right - glassRect.left) / 2 : W * 0.375;
-  const glassRy = glassRect ? (glassRect.bottom - glassRect.top) / 2 : H * 0.375;
 
-  // Shell-specific radii — outer is biggest, inner smallest
-  const offX = shell === 2 ? 140 : shell === 1 ? 85 : 38;
-  const offY = shell === 2 ? 95  : shell === 1 ? 58 : 26;
-  const orbitRx = Math.min(glassRx + offX, W / 2 - 60);
-  const orbitRy = Math.min(glassRy + offY, H / 2 - 40);
+  // Viewport-relative radii so shells are clearly distinct regardless of glass size.
+  // Outer shell uses ~44% of half-width, middle ~33%, inner ~20%.
+  // Clamped so nothing clips past 48px from viewport edge.
+  const frX = shell === 2 ? 0.44 : shell === 1 ? 0.33 : 0.20;
+  const frY = shell === 2 ? 0.40 : shell === 1 ? 0.30 : 0.18;
+  const orbitRx = Math.min(W * frX, W / 2 - 48);
+  const orbitRy = Math.min(H * frY, H / 2 - 48);
 
   return {
     x: cx + orbitRx * Math.cos(a),
@@ -797,21 +792,24 @@ export default function Home() {
   const isMobileRef = useRef(false);
 
   const pushChip = useCallback((label: string, href?: string, section?: string) => {
+    const shell = getChipShell(label, href, section);
     setChipSubmitCount(c => c + 1);
     setChipTransDir(prev => (prev === 1 ? -1 : 1) as 1 | -1);
     setChips(prev => {
-      // Skip if label already lives in a persistent shell (don't duplicate it in inner ring)
-      if (prev.some(c => c.shell !== 0 && c.label === label)) return prev;
-      // Inner-shell chips only — find active inner chips
-      const innerActive = prev.filter(c => c.shell === 0 && c.state !== "exiting");
-      if (innerActive.some(c => c.label === label)) return prev;
+      const active = prev.filter(c => c.state !== "exiting");
+      // Don't add duplicate in same shell
+      if (active.some(c => c.label === label)) return prev;
       let next = [...prev];
-      // Cycle out oldest inner chip when a new one arrives
-      if (innerActive.length >= 1) {
-        const oldest = innerActive[0];
-        next = next.map(c => c.id === oldest.id ? { ...c, state: "exiting" as ChipState } : c);
+      // One chip per shell — evict existing chip in this shell when a new one arrives.
+      // On mobile only allow 1 chip total (inner shell only).
+      if (isMobileRef.current) {
+        const any = active[0];
+        if (any) next = next.map(c => c.id === any.id ? { ...c, state: "exiting" as ChipState } : c);
+      } else {
+        const sameShell = active.find(c => c.shell === shell);
+        if (sameShell) next = next.map(c => c.id === sameShell.id ? { ...c, state: "exiting" as ChipState } : c);
       }
-      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", shell: 0, href, section });
+      next.push({ id: `${label}-${Date.now()}-${Math.random()}`, label, state: "entering", shell, href, section });
       return next;
     });
   }, []);
@@ -819,9 +817,10 @@ export default function Home() {
   const handleChipClick = useCallback((label: string, href?: string, section?: string) => {
     if (href) { navigate(href); return; }
     if (section === "work") { setShowExtended(true); setScrollToWork(true); return; }
-    if (section === "contact") { setShowExtended(true); setScrollToContact(true); return; }
-    // Instant-resolver chips (CKORE, Laugical) — special behaviors
+    if (section === "contact") { setContactClicks(prev => prev + 1); return; }
+    // Instant-resolver chips (CKORE, Laugical, logical) — special behaviors
     if (label === "CKORE") { setShowCkoreConfirm(true); return; }
+    if (label === "logical") { setShowExtended(true); return; }
     if (label === "Laugical") {
       setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
     }
@@ -829,17 +828,15 @@ export default function Home() {
 
   const handleClosePopup = useCallback(() => setExpandedProject(null), []);
 
-  function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleContactFormSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
 
-    // Client-side throttle — mailto forms have no server; this prevents rapid double-sends
     if (!contactThrottle.current.canSubmit()) {
       setFormError("Please wait a moment before sending again.");
       return;
     }
 
-    // Schema validation: reject oversized or malformed input before building the mailto
     const nameCheck = validateName(formName);
     if (!nameCheck.ok) { setFormError(nameCheck.error!); return; }
     const emailCheck = validateEmail(formEmail);
@@ -847,11 +844,22 @@ export default function Home() {
     const msgCheck = validateMessage(formMessage);
     if (!msgCheck.ok) { setFormError(msgCheck.error!); return; }
 
-    const subject = "Enquiry via ATTAlogical";
-    const body = `Name: ${sanitizeForMailto(formName)}\nEmail: ${sanitizeForMailto(formEmail)}\n\n${sanitizeForMailto(formMessage)}`;
-    window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    contactThrottle.current.record();
-    setFormSubmitted(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error ?? "Something went wrong. Try again.");
+        return;
+      }
+      contactThrottle.current.record();
+      setFormSubmitted(true);
+    } catch {
+      setFormError("Could not send message. Check your connection and try again.");
+    }
   }
 
   const goToContact = useCallback(() => {
@@ -928,10 +936,17 @@ export default function Home() {
   useEffect(() => {
     if (!mounted) return;
     if (isMobile) { setShowSearch(true); return; }
-    const delay = 9000 + Math.random() * 3000;
+    const delay = 3000;
     const t = setTimeout(() => setShowSearch(true), delay);
     return () => clearTimeout(t);
   }, [mounted, isMobile]);
+
+  // Nudge: "logical" chip appears 3 s after the search bar activates, once per session
+  useEffect(() => {
+    if (!showSearch) return;
+    const t = setTimeout(() => pushChip("logical"), 3000);
+    return () => clearTimeout(t);
+  }, [showSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!showSearch) return;
@@ -1072,13 +1087,13 @@ export default function Home() {
           pushChip(aiLabel, href, section);
         } else {
           setShowQuestionMark(true);
-          setTimeout(() => setShowQuestionMark(false), 2400);
+          setTimeout(() => setShowQuestionMark(false), 700);
         }
       })
       .catch(() => {
         setIsAiLoading(false);
         setShowQuestionMark(true);
-        setTimeout(() => setShowQuestionMark(false), 2400);
+        setTimeout(() => setShowQuestionMark(false), 700);
       });
   }, [submittedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1105,20 +1120,6 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [seriouslyEntry]);
 
-  // Populate valence + middle shells as soon as the component mounts
-  useEffect(() => {
-    if (!mounted) return;
-    setChips(
-      SHELL_CHIPS.map(sc => ({
-        id: `${sc.label}-persistent`,
-        label: sc.label,
-        state: "entering" as ChipState,
-        shell: sc.shell,
-        href: sc.href,
-        section: sc.section,
-      }))
-    );
-  }, [mounted]);
 
   if (!mounted) return null;
 
@@ -1166,7 +1167,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-m" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1189,7 +1190,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-mr" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1380,7 +1381,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-d" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1406,7 +1407,7 @@ export default function Home() {
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-dr" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2, ease: "easeInOut" }}>?</motion.span>
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -1477,6 +1478,7 @@ export default function Home() {
                     if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
                     if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
                     setSubmittedQuery(prev => ({ value: searchValue, nonce: (prev?.nonce ?? 0) + 1 }));
+                    setSearchValue("");
                   }}
                   onFocus={() => { setShowSearch(true); setIsFocused(true); }}
                   onBlur={() => setIsFocused(false)}
@@ -1509,6 +1511,7 @@ export default function Home() {
               </div>
 
             </div>
+
           </>
         )}
         {/* ── SERIOUSLY ── */}
@@ -1669,7 +1672,7 @@ export default function Home() {
                     {formSubmitted ? (
                       <div className="sub-contact-thanks">
                         <p className="sub-contact-thanks-title">Message sent.</p>
-                        <p className="sub-contact-thanks-note">Your email client should have opened. If not, write to Boelie@attalogical.com directly.</p>
+                        <p className="sub-contact-thanks-note">Check your email for a confirmation.</p>
                       </div>
                     ) : (
                       <form className="sub-contact-form" onSubmit={handleContactFormSubmit}>
@@ -1778,6 +1781,32 @@ export default function Home() {
               </motion.div>
             </div>
           </section>
+
+          {/* Footer */}
+          <footer style={{
+            padding: isMobile ? "8vw 6vw" : "3.5vw 12vw",
+            borderTop: "1px solid rgba(0,0,0,0.06)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+            fontFamily: '"Playfair Display", serif',
+          }}>
+            <span style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.22)", textTransform: "uppercase" }}>
+              © {new Date().getFullYear()} ATTA logical — Boelie van Camp
+            </span>
+            <div style={{ display: "flex", gap: "1.8rem" }}>
+              {[
+                { label: "Catalogue", href: "/catalogue" },
+                { label: "Subscriptions", href: "/subscriptions" },
+              ].map(({ label, href }) => (
+                <Link key={label} href={href} style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textDecoration: "none", textTransform: "uppercase" }}>
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </footer>
 
         </div>
       )}

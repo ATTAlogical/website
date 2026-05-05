@@ -58,6 +58,31 @@ export const PROJECTS_DATA: ProjectEntry[] = [
     images: [],
   },
   {
+    slug: "prof-sayon",
+    title: "Prof. Sayon",
+    subtitle: "Medium & Clairvoyant",
+    description:
+      "A bespoke site for an independent medium and clairvoyant based in The Hague. Visuals lean into glimmer and deliberate obscurity — built to feel like a threshold, not a shopfront.",
+    longDescription:
+      "Tailored entirely around the client's voice and demands. Prof. Sayon offers personal consultations and occult works spanning 25+ years of practice. The visual language was steered toward restraint and glimmer — no occult clichés, just quiet precision. Contact flows directly through WhatsApp, keeping every session personal. Bilingual copy (Dutch / English / French) ensures the site speaks to the full breadth of the clientele.",
+    highlights: [
+      "Designed to the client's brief: atmosphere of a threshold, not a shopfront",
+      "Contact via WhatsApp — direct line, no impersonal forms",
+      "Bilingual copy across Dutch, English and French",
+      "Visual identity: glimmer, restraint, and deliberate vagueness",
+      "Consultation and occult works clearly structured with transparent pricing",
+    ],
+    tags: ["Design", "Consultations", "Appointments", "Contact"],
+    href: "https://medium-sayon-helderziende.com/",
+    image: "/img/prof-sayon-project.png",
+    images: [
+      "/img/prof-sayon-1.png",
+      "/img/prof-sayon-2.png",
+      "/img/prof-sayon-3.png",
+      "/img/prof-sayon-4.png",
+    ],
+  },
+  {
     slug: "follow-ai",
     title: "Follow-AI",
     subtitle: "follow-ai.nl",

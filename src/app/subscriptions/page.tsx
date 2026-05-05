@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { validateName, validateEmail, validateMessage, sanitizeForMailto, createSubmitThrottle } from "@/lib/validation";
+import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +195,7 @@ export default function Subscriptions() {
   const submitThrottle = useRef(createSubmitThrottle(10_000));
   const isMobile = useIsMobile();
 
-  function handleContactSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleContactSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
 
@@ -208,12 +208,24 @@ export default function Subscriptions() {
     if (!nameCheck.ok) { setFormError(nameCheck.error!); return; }
     const emailCheck = validateEmail(formEmail);
     if (!emailCheck.ok) { setFormError(emailCheck.error!); return; }
-    const msgCheck = validateMessage(formMessage);
+    const tierLine = formTier ? `Tier: ${formTier}\n\n` : "";
+    const fullMessage = `${tierLine}${formMessage}`;
+    const msgCheck = validateMessage(fullMessage);
     if (!msgCheck.ok) { setFormError(msgCheck.error!); return; }
 
-    const subject = `Subscription enquiry — ${formTier || "General"}`;
-    const body = `Name: ${sanitizeForMailto(formName)}\nEmail: ${sanitizeForMailto(formEmail)}\nTier: ${formTier || "Not specified"}\n\n${sanitizeForMailto(formMessage)}`;
-    window.location.href = `mailto:Boelie@attalogical.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formName, email: formEmail, message: fullMessage }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.error ?? "Failed to send. Please try again."); return; }
+    } catch {
+      setFormError("Failed to send. Please check your connection.");
+      return;
+    }
+
     submitThrottle.current.record();
     setSubmitted(true);
   }
