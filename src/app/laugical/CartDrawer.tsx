@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLaugicalCart } from "@/context/LaugicalCart";
 
@@ -118,6 +118,8 @@ export default function CartDrawer() {
     useLaugicalCart();
 
   const panelRef = useRef<HTMLDivElement>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Close on Escape
   useEffect(() => {
@@ -151,9 +153,35 @@ export default function CartDrawer() {
     }
   }, [isOpen]);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
+    if (checkoutLoading || items.length === 0) return;
+    setCheckoutLoading(true);
+    setCheckoutError(null);
     setMusicState("checkout");
-    // Checkout integration will go here
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((i) => ({
+            slug: i.product.slug,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Checkout failed");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setCheckoutLoading(false);
+      setMusicState("accumulating");
+      setCheckoutError(
+        err instanceof Error ? err.message : "Something went wrong"
+      );
+    }
   };
 
   return (
@@ -244,9 +272,16 @@ export default function CartDrawer() {
                     className="cart-checkout-btn"
                     whileTap={{ scale: 0.98 }}
                     onClick={handleCheckout}
+                    disabled={checkoutLoading}
+                    aria-busy={checkoutLoading}
                   >
-                    checkout
+                    {checkoutLoading ? "redirecting…" : "checkout"}
                   </motion.button>
+                  {checkoutError && (
+                    <p className="cart-checkout-error" role="alert">
+                      {checkoutError}
+                    </p>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
