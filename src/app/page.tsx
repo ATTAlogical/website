@@ -1195,17 +1195,6 @@ export default function Home() {
                     </AnimatePresence>
                   </span>
                 </div>
-                <p className="pointer-events-none" style={{
-                  marginTop: "1.2em",
-                  fontFamily: '"Playfair Display", serif',
-                  fontSize: "clamp(0.5rem, 2.8vw, 0.65rem)",
-                  letterSpacing: "0.22em",
-                  color: "rgba(0,0,0,0.32)",
-                  textTransform: "uppercase",
-                  userSelect: "none",
-                }}>
-                  Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
-                </p>
               </div>
             </div>
 
@@ -1329,6 +1318,20 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
+              <p style={{
+                marginTop: "1em",
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(0.48rem, 2.5vw, 0.62rem)",
+                letterSpacing: "0.22em",
+                color: "rgba(0,0,0,0.30)",
+                textTransform: "uppercase",
+                textAlign: "center",
+                pointerEvents: "none",
+                userSelect: "none",
+                whiteSpace: "nowrap",
+              }}>
+                Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
+              </p>
             </div>
           </>
         ) : (
@@ -1402,17 +1405,6 @@ export default function Home() {
                     </AnimatePresence>
                   </span>
                 </div>
-                <p className="pointer-events-none" style={{
-                  marginTop: "1.4em",
-                  fontFamily: '"Playfair Display", serif',
-                  fontSize: "clamp(0.5rem, 0.8vw, 0.68rem)",
-                  letterSpacing: "0.24em",
-                  color: "rgba(0,0,0,0.32)",
-                  textTransform: "uppercase",
-                  userSelect: "none",
-                }}>
-                  Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
-                </p>
               </div>
 
               {/* Contact email surface */}
@@ -1511,7 +1503,22 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
+              <p style={{
+                marginTop: "1.1em",
+                fontFamily: '"Playfair Display", serif',
+                fontSize: "clamp(0.5rem, 0.75vw, 0.65rem)",
+                letterSpacing: "0.24em",
+                color: "rgba(0,0,0,0.30)",
+                textTransform: "uppercase",
+                textAlign: "center",
+                pointerEvents: "none",
+                userSelect: "none",
+                whiteSpace: "nowrap",
+              }}>
+                Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
+              </p>
             </div>
+
           </>
         )}
         {/* ── SERIOUSLY ── */}
