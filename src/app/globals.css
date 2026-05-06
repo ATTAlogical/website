@@ -321,6 +321,11 @@ body::after {
 .sub-contact-thanks-title { font-family: "Playfair Display", serif; font-size: 28px; color: #000; margin: 0 0 14px; }
 .sub-contact-thanks-note { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.5); margin: 0; max-width: 440px; line-height: 1.7; }
 
+@media (max-width: 768px) {
+  .sub-contact-form { width: 100%; }
+  .sub-contact-row { padding: 14px 0; border-bottom-width: 1px; }
+}
+
 @media (max-width: 900px) {
   .sub-plate-grid { grid-template-columns: 1fr; }
   .sub-plate-border { padding: 28px 20px 36px; }

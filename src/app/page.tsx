@@ -9,6 +9,7 @@ import { useTransitionRouter } from "@/hooks/useTransitionRouter";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
+import { useLang } from "@/context/Language";
 import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
 
 const BAD_WORDS = new Set([
@@ -748,6 +749,7 @@ export default function Home() {
   const [chips, setChips] = useState<Chip[]>([]);
   const [chipTransDir, setChipTransDir] = useState<1 | -1>(1);
   const [chipSubmitCount, setChipSubmitCount] = useState(0);
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState<{ value: string; nonce: number } | null>(null);
   const [seriouslyEntry, setSeriouslyEntry] = useState<{ message: string; id: number } | null>(null);
   const [seriouslyCount, setSeriouslyCount] = useState(0);
@@ -761,7 +763,7 @@ export default function Home() {
   const [formError, setFormError] = useState<string | null>(null);
   // Throttle prevents accidental double-submit; 10 s cooldown between sends
   const contactThrottle = useRef(createSubmitThrottle(10_000));
-  const [lang, setLang] = useState<"en" | "nl">("en");
+  const { lang, setLang } = useLang();
   const [laugicalEntry, setLaugicalEntry] = useState<{ message: string; id: number } | null>(null);
   const [showCkoreConfirm, setShowCkoreConfirm] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -820,7 +822,7 @@ export default function Home() {
     if (section === "contact") { setContactClicks(prev => prev + 1); return; }
     // Instant-resolver chips (CKORE, Laugical, logical) — special behaviors
     if (label === "CKORE") { setShowCkoreConfirm(true); return; }
-    if (label === "logical") { setShowExtended(true); return; }
+    if (label === "logical") { setShowExtended(true); if (isMobileRef.current) setShowScrollHint(true); return; }
     if (label === "Laugical") {
       setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
     }
@@ -898,6 +900,12 @@ export default function Home() {
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
   useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
+  useEffect(() => {
+    if (!showScrollHint) return;
+    const onScroll = () => { if (window.scrollY > 60) setShowScrollHint(false); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [showScrollHint]);
   useEffect(() => {
     setMounted(true);
     if (sessionStorage.getItem("from-nav") === "1") {
@@ -1238,6 +1246,26 @@ export default function Home() {
                 ))}
               </AnimatePresence>
             </div>
+
+            {/* Scroll hint arrow — appears after logical chip, fades on scroll */}
+            <AnimatePresence>
+              {showScrollHint && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                  style={{ position: "absolute", top: "calc(50% + 32vw)", left: 0, right: 0, display: "flex", justifyContent: "center", pointerEvents: "none" }}
+                >
+                  <motion.svg
+                    width="18" height="11" viewBox="0 0 18 11" fill="none"
+                    animate={{ y: [0, 7, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <path d="M1 1L9 9.5L17 1" stroke="rgba(0,0,0,0.28)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </motion.svg>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Contact email */}
             <div style={{
@@ -1608,7 +1636,7 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw 12vw 26vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <div ref={contactHeadingWrapRef} style={{ marginBottom: "4rem" }}>
               <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase", textAlign: isMobile ? "right" : "left" }}>
                 {c.contact}
@@ -1879,60 +1907,6 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── LANGUAGE TOGGLE ── */}
-      <div style={{
-        position: "fixed",
-        ...(isMobile
-          ? { top: "max(2rem, env(safe-area-inset-top, 1.5rem))", left: "max(1.5rem, env(safe-area-inset-left, 1.5rem))" }
-          : { bottom: "max(1.5rem, env(safe-area-inset-bottom, 2rem))", left: "max(2rem, env(safe-area-inset-left, 2rem))" }
-        ),
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
-        zIndex: 100,
-
-      }}>
-
-        <motion.button
-          onClick={() => setLang(l => l === "en" ? "nl" : "en")}
-          whileHover={{ scale: 1.07 }}
-          whileTap={{ scale: 0.91 }}
-          style={{
-            width: "3.1rem", height: "3.1rem",
-            borderRadius: "50%",
-            background: "linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(235,236,240,0.88) 100%)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            border: "1.5px solid rgba(255,255,255,0.75)",
-            boxShadow: [
-              "0 6px 22px rgba(0,0,0,0.13)",
-              "0 2px 6px rgba(0,0,0,0.08)",
-              "inset 0 0 0 1px rgba(0,0,0,0.07)",
-              "inset 0 2.5px 0 rgba(255,255,255,1)",
-              "inset 0 -2.5px 0 rgba(0,0,0,0.14)",
-              "inset 2px 0 0 rgba(255,255,255,0.45)",
-              "inset -2px 0 0 rgba(0,0,0,0.05)",
-            ].join(", "),
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "rgba(0,0,0,0.5)",
-            padding: 0,
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.3rem", height: "1.3rem" }}>
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-        </motion.button>
-        <span style={{
-          fontSize: "0.52rem", letterSpacing: "0.14em",
-          color: "rgba(0,0,0,0.28)", textTransform: "uppercase",
-          fontFamily: '"Playfair Display", serif',
-          userSelect: "none",
-        }}>
-          {lang}
-        </span>
-      </div>
 
       {/* ── CKORE CONFIRM ── */}
       <AnimatePresence>

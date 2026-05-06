@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import PageTransition from "./PageTransition";
 import { CkoreAudioProvider } from "@/context/CkoreAudio";
+import { LanguageProvider } from "@/context/Language";
+import LanguageToggle from "@/components/LanguageToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,11 +44,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
-        <CkoreAudioProvider>
-          <div id="page-blur-layer">{children}</div>
-          <Analytics />
-          <PageTransition />
-        </CkoreAudioProvider>
+        <LanguageProvider>
+          <CkoreAudioProvider>
+            <div id="page-blur-layer">{children}</div>
+            <Analytics />
+            <PageTransition />
+            <LanguageToggle />
+          </CkoreAudioProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
