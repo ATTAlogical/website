@@ -1,4 +1,11 @@
-const CHIPS_DATA = [
+type ChipEntry = {
+  label: string;
+  href?: string;
+  section?: string;
+  keywords: string[];
+};
+
+const CHIPS_DATA: ChipEntry[] = [
   {
     label: "Laugical",
     keywords: [
@@ -24,6 +31,17 @@ const CHIPS_DATA = [
     keywords: ["logical", "logic", "atta", "attalogical"],
   },
   {
+    label: "Store",
+    href: "/laugical/store",
+    keywords: [
+      "store", "shop", "buy", "purchase", "merch", "merchandise",
+      "stickers", "sticker", "prints", "print", "objects", "object",
+      "apparel", "clothing", "one-of-one", "made-to-order", "products",
+      // NL
+      "winkel", "kopen", "bestellen", "producten", "stickers",
+    ],
+  },
+  {
     label: "CKORE",
     keywords: [
       "ckore",
@@ -45,9 +63,11 @@ const CHIPS_DATA = [
   },
 ];
 
+type ChipResolution = { label: string; href?: string; section?: string };
+
 // Only exact matches (score 0) — prevents short words like "work" bleeding
 // into Laugical via prefix-matching "works".
-export function resolveChip(rawQuery: string): string | null {
+export function resolveChip(rawQuery: string): ChipResolution | null {
   const q = rawQuery.toLowerCase().trim();
   if (!q) return null;
 
@@ -56,7 +76,13 @@ export function resolveChip(rawQuery: string): string | null {
 
   for (const cat of CHIPS_DATA) {
     for (const word of queries) {
-      if (cat.keywords.includes(word)) return cat.label;
+      if (cat.keywords.includes(word)) {
+        return {
+          label: cat.label,
+          ...(cat.href ? { href: cat.href } : {}),
+          ...(cat.section ? { section: cat.section } : {}),
+        };
+      }
     }
   }
   return null;

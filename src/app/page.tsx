@@ -1068,8 +1068,8 @@ export default function Home() {
 
     if (isBadWord(q)) return;
 
-    const label = resolveChip(q);
-    if (label) { pushChip(label); return; }
+    const resolved = resolveChip(q);
+    if (resolved) { pushChip(resolved.label, resolved.href, resolved.section); return; }
 
     // Keyword match missed — ask the AI
     setIsAiLoading(true);
@@ -1318,20 +1318,6 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              <p style={{
-                marginTop: "1em",
-                fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(0.48rem, 2.5vw, 0.62rem)",
-                letterSpacing: "0.22em",
-                color: "rgba(0,0,0,0.30)",
-                textTransform: "uppercase",
-                textAlign: "center",
-                pointerEvents: "none",
-                userSelect: "none",
-                whiteSpace: "nowrap",
-              }}>
-                Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
-              </p>
             </div>
           </>
         ) : (
@@ -1347,6 +1333,27 @@ export default function Home() {
                   opacity: 0.4,
                 }}
               />
+
+              {/* Tagline — below the glass pane */}
+              <p
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: "calc(50% + 37.5% + 18px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontFamily: '"Playfair Display", serif',
+                  fontStyle: "italic",
+                  fontSize: "clamp(0.58rem, 0.8vw, 0.72rem)",
+                  letterSpacing: "0.16em",
+                  color: "rgba(0,0,0,0.28)",
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              >
+                boelie van camp · software · design · music
+              </p>
 
               <div
                 ref={titleContainerRef}

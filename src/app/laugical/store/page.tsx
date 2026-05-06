@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useLaugicalCart } from "@/context/LaugicalCart";
@@ -304,6 +304,21 @@ export default function StorePage() {
     };
   }, []);
 
+  // Show cancel banner if user came back from a cancelled checkout
+  const [showCancelled, setShowCancelled] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "cancelled") {
+      setShowCancelled(true);
+      // Clean the URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("checkout");
+      window.history.replaceState({}, "", url.toString());
+      const t = setTimeout(() => setShowCancelled(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   const isEmpty = STORE_PRODUCTS.length === 0;
 
   // Group products by type, preserving source order within each group
@@ -314,6 +329,21 @@ export default function StorePage() {
     <main className="store-page">
       <StoreNav />
       <StoreHero />
+
+      <AnimatePresence>
+        {showCancelled && (
+          <motion.div
+            key="checkout-cancel-banner"
+            className="store-cancel-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            checkout cancelled — your bag is still here
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="store-wrap">
         {isEmpty ? (
