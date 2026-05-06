@@ -115,6 +115,31 @@ export function teValuesAt(angle: number): TemporalValues {
 - **"logic" chip**: Expands the page downward (Work Experience → Contact → Projects)
 - **"Contact" chip**: After 3 clicks, auto-scrolls to contact section
 
+#### Two-Tier Chip Resolution
+
+**Tier 1 — Instant keyword resolver** (`src/lib/chipResolver.ts`): exact-match only against CKORE and Laugical keyword lists. Returns immediately, no API call.
+
+**Tier 2 — AI fallback** (`src/app/api/resolve-chip/route.ts`): any query that misses the keyword list is sent to Groq (`llama-3.1-8b-instant`, `json_object` response format, `max_tokens: 80`). The AI freely invents a short label but routes to one of four fixed destinations:
+- `section:work` — work experience / CV section
+- `section:contact` — contact section
+- `href:/subscriptions#plans` — subscriptions pricing cards
+- `href:/catalogue` — full project catalogue
+
+**Label voice**: terse, technical, editorial — concept nodes not menu items (e.g. "Build Index", "Rate Card", "Open Channel", "Stack"). The AI is instructed never to use "ATTA Logical" in a label; brand queries produce "Logical".
+
+**Route normalization**: AI output is lowercased and all whitespace stripped before matching against `VALID_ROUTES`, so minor model drift (spaces, casing) doesn't silently produce a null chip. `max_tokens: 80` prevents JSON truncation on longer routes.
+
+**Display limits**:
+- Desktop: max 3 chips on screen — a 4th evicts the oldest
+- Mobile: max 1 chip
+- `isMobile` is read directly from the `pushChip` closure (not a ref), so the limit is always current at call time. Mobile chip render hard-caps to `.slice(-1)` as a safety net.
+
+**Edge cases handled**:
+- Bad words → `isBadWord` guard fires first, chip resolution skipped, "seriously?" messages shown
+- Repeated bad words (≥9) → `showYoureDone` state
+- Duplicate label → chip not re-added if already active
+- After 6s with search open → auto-nudges "logical" to seed the first chip
+
 ### 3.4 Chip Orbit System
 
 Each chip orbits the glass pane on a shared ellipse, spread by a fixed phase offset:
@@ -127,6 +152,8 @@ const CHIP_PHASES = {
   Contact:  Math.PI * 1.5,
 };
 ```
+
+AI-generated chips use a deterministic hash (`labelPhase(label)`) so the same label always lands at the same orbital position.
 
 Chip position is updated every rAF frame (no throttle — chips must feel live). Chip SVG graphics use `motion.path` pathLength draw-in animations (Motion SVG animation API).
 
@@ -157,6 +184,12 @@ Chip position is updated every rAF frame (no throttle — chips must feel live).
 - Per-project sections stacked vertically, each with `id={project.slug}` for anchor navigation
 - Horizontal drag-scroll image row per section (Motion `drag="x"`)
 - Fixed bottom info panel: project name, link, description, tags — updates with `AnimatePresence mode="wait"` as active project changes
+
+**Info Bar** (fixed bottom panel):
+- **Entry**: spring animation (`stiffness: 28, damping: 9, mass: 1.4, delay: 0.28`) — slides up from off-screen with a bouncy feel
+- **Exit**: triggered by `page:leaving` event — `leaving` state set, bar slides down (`duration: 0.38, ease: [0.4, 0, 1, 1]`)
+- **Portalled to `document.body`** via `createPortal` — lives outside `#page-blur-layer` so the page's opacity fade doesn't hide it during navigation exit
+- `mounted` state prevents SSR portal errors
 
 **Active project detection** (Motion scroll API):
 ```typescript
@@ -198,6 +231,51 @@ const headerOpacity = useTransform(entranceP, [0, 0.6], [0, 1]);
 - `loading="lazy"` + `decoding="async"` on all images except first image of first section; reflection images always lazy
 
 **Per-project pages**: `/projects/[slug]` — Server Component with `generateStaticParams`, kept for future use.
+
+### 3.7 Page Transition System
+
+Blur + fade on every route change. Targets a `#page-blur-layer` wrapper div (not `<body>`) to avoid CSS `filter` creating a stacking context that breaks `position: fixed` children.
+
+- `src/app/layout.tsx` wraps `{children}` in `<div id="page-blur-layer">`
+- `src/app/PageTransition.tsx` — listens to `routeChangeStart` / `routeChangeComplete`, applies `filter: blur(12px); opacity: 0` on exit and clears it on entry
+- `src/hooks/useTransitionRouter.ts` — programmatic navigation: dispatches `page:leaving` event, triggers blur-out on the layer, then calls `router.push` after 420ms
+
+**Custom event `page:leaving`**: dispatched before blur starts. Used by components that need to react to an imminent navigation (e.g. the catalogue info bar animates out on this event).
+
+### 3.8 Contact Form
+
+The contact form POSTs to `/api/contact` (`src/app/api/contact/route.ts`), which sends two emails via Resend. No email client required on the visitor's end.
+
+**Two emails sent per submission (via `Promise.all`):**
+1. **Inquiry** → `boelie@attalogical.com` — subject `Enquiry via ATTAlogical - {name}`, Reply-To set to sender's email so inbox reply goes directly to them
+2. **Confirmation** → visitor's email — subject `Message received — ATTA Logical`, body: "Expect an answer within 1-3 business days"
+
+Confirmation failure only logs; the request still returns `{ ok: true }` so the visitor isn't shown an error. Success message shown to visitor: `"Check your email for a confirmation."`
+
+**Validation — both client and server** (`src/lib/validation.ts`):
+| Field | Rules |
+|---|---|
+| Name | Required, ≤100 chars |
+| Email | Required, ≤254 chars, must match `x@x.x` format |
+| Message | Required, ≤2000 chars |
+| All fields | ASCII control characters stripped |
+
+**Rate limiting**: 3 submissions per IP per minute (server-side `Map`), 10s cooldown between submits (client-side throttle).
+
+**Resend setup**:
+- FROM: `ATTA Logical <noreply@attalogical.com>` — domain verified in Resend dashboard
+- `RESEND_API_KEY` must be set in `.env.local` and Vercel Environment Variables
+
+**Google Workspace MX records** (required for `boelie@attalogical.com` to receive email — added to Vercel DNS):
+| Name | Type | Priority | Value |
+|------|------|----------|-------|
+| @ | MX | 1 | ASPMX.L.GOOGLE.COM |
+| @ | MX | 5 | ALT1.ASPMX.L.GOOGLE.COM |
+| @ | MX | 5 | ALT2.ASPMX.L.GOOGLE.COM |
+| @ | MX | 10 | ALT3.ASPMX.L.GOOGLE.COM |
+| @ | MX | 10 | ALT4.ASPMX.L.GOOGLE.COM |
+
+The same form is present on `/subscriptions` — the selected tier is prepended to the message body before sending.
 
 ---
 
@@ -350,6 +428,12 @@ Works on both light and dark images. The double-layer border (white inner + dark
 - Fixed bottom panel: active project info (updates with scroll)
 - Anchor navigation: `/catalogue#[slug]` scrolls to that project
 
+#### `/subscriptions` — Service Tiers / Pricing
+- Pricing cards for four service tiers (I–IV), heights scale with tier level
+- Contact form at bottom — POSTs to `/api/contact` with selected tier prepended to message
+- `#plans` anchor on `<section className="sub-plate-wrap">` — navigating to `/subscriptions#plans` scrolls directly to the cards via `requestAnimationFrame`
+- AI chip `href:/subscriptions#plans` routes here from homepage search
+
 #### `/projects/[slug]` — Per-Project Page (future use)
 - Static generation via `generateStaticParams`
 - Server Component — no event handlers (CSS classes for hover)
@@ -438,6 +522,10 @@ Image naming convention:
   - ~~Mobile responsiveness~~ — done in Phase 2
   - ~~Analytics implementation~~ — Vercel Analytics live
   - ~~Domain + Vercel config~~ — site is live at attalogical.com
+  - ~~Contact form~~ — server-side via Resend; visitor confirmation email; Google Workspace MX records in Vercel DNS
+  - ~~Page transition system~~ — blur/fade on all route changes via `#page-blur-layer` + `page:leaving` event
+  - ~~Subscriptions page~~ — pricing tiers with contact form wired to `/api/contact`
+  - ~~AI chip system~~ — two-tier resolver (instant keyword + Groq fallback), route normalization, desktop 3 / mobile 1 chip limits
 
 ---
 
@@ -477,6 +565,19 @@ Image naming convention:
 - **`repeating-linear-gradient` grain**: looks subtle but forces repaint on every scroll frame — avoid for decorative effects on scrolling content
 - **FLIP animation + filters**: never animate `backdrop-filter` or `filter: blur()` on a `layoutId` element — the filter is composited over the growing area every frame, causing severe jank
 - **`mask-image` vs cover-fade trade-off**: a cover-fade overlay (gradient from transparent → background color) avoids `maskImage` cost but fails if child GPU layers escape `overflow: hidden`. Use `maskImage` with `will-change: transform` on the container when a true alpha fade is needed.
+
+### 9.4 Environment Variables & Deployment
+
+Both keys must be set in `.env.local` locally **and** in the Vercel project's Environment Variables dashboard — they are never committed (`.env*` is gitignored).
+
+| Key | Purpose | Missing behaviour |
+|-----|---------|-------------------|
+| `GROQ_API_KEY` | AI chip fallback resolver | Silently returns `{ label: null }` — every query shows a question mark chip |
+| `RESEND_API_KEY` | Contact form email sender | `/api/contact` returns 503 |
+
+After adding keys to Vercel, redeploy for them to take effect.
+
+**Google Workspace MX records** must be present in Vercel DNS for `boelie@attalogical.com` to receive email (see section 3.8). Without MX records, Resend shows "sent" but the email is delivered into a void.
 
 ### 9.3 Next.js App Router
 - Server Components cannot have event handlers — use CSS classes (`.catalogue-back-link`, `.catalogue-visit-link`) for hover effects
@@ -534,4 +635,4 @@ Avoid design clichés, especially overused "AI aesthetics". Create recognition t
 
 ---
 
-**Document version 2.3 — Updated April 2026 to reflect site launch, analytics live, phase status clarified**
+**Document version 2.4 — Updated May 2026: AI chip system detail, page transition system, catalogue info bar, contact form (Resend + Google Workspace MX), subscriptions page, environment variable gotchas, Phase 4 completions**

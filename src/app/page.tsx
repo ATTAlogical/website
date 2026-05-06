@@ -1201,7 +1201,7 @@ export default function Home() {
             {/* Active chip — swipes in/out from opposite sides (mobile: inner-shell only) */}
             <div style={{ position: "absolute", top: "calc(50% + 22vw)", left: 0, right: 0, display: "flex", justifyContent: "center", overflow: "hidden" }}>
               <AnimatePresence mode="popLayout">
-                {chips.filter(ch => ch.shell === 0 && ch.state !== "exiting").map(chip => (
+                {chips.filter(ch => ch.state !== "exiting").slice(-1).map(chip => (
                   <motion.button
                     key={chip.id}
                     initial={chipSubmitCount <= 1
@@ -1405,6 +1405,7 @@ export default function Home() {
                     </AnimatePresence>
                   </span>
                 </div>
+
               </div>
 
               {/* Contact email surface */}
@@ -1503,20 +1504,6 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              <p style={{
-                marginTop: "1.1em",
-                fontFamily: '"Playfair Display", serif',
-                fontSize: "clamp(0.5rem, 0.75vw, 0.65rem)",
-                letterSpacing: "0.24em",
-                color: "rgba(0,0,0,0.30)",
-                textTransform: "uppercase",
-                textAlign: "center",
-                pointerEvents: "none",
-                userSelect: "none",
-                whiteSpace: "nowrap",
-              }}>
-                Boelie van Camp &nbsp;·&nbsp; Software &nbsp;·&nbsp; Design &nbsp;·&nbsp; Music
-              </p>
             </div>
 
           </>
