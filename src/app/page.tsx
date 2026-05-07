@@ -61,7 +61,7 @@ const CONTENT = {
         role: "Fullstack Developer Intern",
         company: "Stichting Asha",
         city: "Utrecht",
-        period: "Feb 2025 – present",
+        period: "Feb 2025 – Aug 2025",
         description: "Designed and built an internal laptop management system (AshaOS) to manage the organisation's complete laptop fleet.",
         bullets: [
           "Fullstack web app: Next.js, Node.js, GraphQL and PostgreSQL in a Turborepo monorepo",
@@ -92,7 +92,7 @@ const CONTENT = {
         role: "Stagiair Fullstack Developer",
         company: "Stichting Asha",
         city: "Utrecht",
-        period: "feb 2025 – heden",
+        period: "feb 2025 – aug 2025",
         description: "Ontworpen en gebouwd van een intern laptopbeheersysteem (AshaOS) voor het beheren van het volledige laptoppark van de stichting.",
         bullets: [
           "Fullstack webapplicatie: Next.js, Node.js, GraphQL en PostgreSQL in een Turborepo monorepo",
@@ -108,6 +108,11 @@ const CONTENT = {
 
 const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
+
+const MARQUEE_ITEMS = [
+  "Follow AI", "Medium Sayon", "AshaOS", "ATTA.CKORE", "ATTA Laugical",
+  "Web Development", "Concept & Design", "Brand Systems", "Motion & Interaction",
+];
 
 // ── Atomic orbital chip system ────────────────────────────────────────────────
 // Chips only appear when searched — their shell determines which ring they land in.
@@ -1601,6 +1606,8 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+        {/* Bottom fade into extended sections */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ height: "6vh", background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1))" }} />
       </div>{/* end hero */}
 
       {/* ── EXTENDED SECTIONS ── */}
@@ -1634,6 +1641,18 @@ export default function Home() {
               </div>
             ))}
           </section>
+
+          {/* Marquee */}
+          <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: isMobile ? "7vw 0" : "3.5vw 0", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: "linear-gradient(90deg, white 0%, transparent 14%, transparent 86%, white 100%)" }} />
+            <div className="marquee-track">
+              {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+                <span key={i} className="marquee-item">
+                  {item}<span className="marquee-sep">·</span>
+                </span>
+              ))}
+            </div>
+          </div>
 
           {/* Contact */}
           <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
