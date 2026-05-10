@@ -735,6 +735,28 @@ const ChipLayer = memo(function ChipLayer({
   );
 });
 
+// ─── Mobile broadsheet — live timestamp ──────────────────────────────────────
+
+function MobileLiveStamp() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  if (!now) return <span className="m-masthead-stamp">— — — — — —</span>;
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  return (
+    <span className="m-masthead-stamp" aria-live="off">
+      {yyyy}-{mm}-{dd} · {hh}:{mi}
+    </span>
+  );
+}
+
 export default function Home() {
   const temporal = useTemporalEvolution();
   const isMobile = useIsMobile();
@@ -1129,142 +1151,129 @@ export default function Home() {
   return (
     <main className="relative w-full bg-white" style={{ height: showExtended ? "auto" : "100%", overflow: "clip" }}>
       {/* ── HERO ── */}
-      <div className="relative w-full" style={{ height: "100svh", overflow: "clip" }}>
+      <div
+        className={isMobile ? "m-hero-shell" : "relative w-full"}
+        style={isMobile ? undefined : { height: "100svh", overflow: "clip", position: "relative" }}
+      >
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none opacity-30" />
 
         {isMobile ? (
-          /* ── MOBILE HERO ── */
+          /* ── MOBILE BROADSHEET ── editorial single-column. Not a rearranged desktop. */
           <>
-            {/* Centered glass pane + title */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div
-                ref={glassRef}
-                style={{
-                  position: "absolute",
-                  width: "82vw", height: "44vw",
-                  borderRadius: "20px",
-                  background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))",
-                  border: "1px solid rgba(0,0,0,0.07)",
-                  opacity: 0.4,
-                }}
-              />
-              <div style={{ position: "relative", zIndex: 10, textAlign: "center" }}>
-                <h1
-                  className="glossy-text-shadow"
-                  style={{
-                    fontSize: "clamp(1.8rem, 9.5vw, 3.2rem)",
-                    letterSpacing: "0.02em",
-                    fontWeight: 440,
-                    lineHeight: 1.1,
-                    fontFamily: '"Playfair Display", serif',
-                    paddingBottom: "0.15em",
-                    userSelect: "none",
-                  }}
-                >
-                  <span style={{ position: "relative", display: "inline-block" }}>
-                    <span className="glossy-text">ATTA logical</span>
-                    <AnimatePresence>
-                      {showQuestionMark && (
-                        <motion.span key="qm-m" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
-                      )}
-                    </AnimatePresence>
-                  </span>
-                </h1>
-                <div
-                  className="pointer-events-none"
-                  style={{
-                    marginTop: "-0.1em", opacity: 0.18,
-                    transform: "scaleY(-0.85) translateY(0.2rem)",
-                    filter: "blur(1.5px)",
-                    fontFamily: '"Playfair Display", serif',
-                    fontSize: "clamp(1.8rem, 9.5vw, 3.2rem)",
-                    fontWeight: 440,
-                    letterSpacing: "0.02em",
-                    lineHeight: 1.1,
-                  }}
-                >
-                  <span style={{ position: "relative", display: "inline-block" }}>
-                    <span className="glossy-text">ATTA logical</span>
-                    <AnimatePresence>
-                      {showQuestionMark && (
-                        <motion.span key="qm-mr" style={QMARK_STYLE}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
-                      )}
-                    </AnimatePresence>
-                  </span>
-                </div>
-              </div>
+            {/* Masthead */}
+            <header className="m-masthead">
+              <span className="m-masthead-mark" aria-hidden>ATTA · logical</span>
+              <MobileLiveStamp />
+            </header>
+
+            {/* Lede — large editorial italic phrase */}
+            <div className="m-lede">
+              <h1 className="m-lede-title glossy-text-shadow">
+                <span className="glossy-text">ATTA logical</span>
+                <AnimatePresence>
+                  {showQuestionMark && (
+                    <motion.span key="qm-m-bs" style={QMARK_STYLE}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>?</motion.span>
+                  )}
+                </AnimatePresence>
+              </h1>
+              <p className="m-lede-byline">
+                boelie van camp · software · design · music
+              </p>
+              <p className="m-lede-quote">
+                <em>An ecosystem in three branches.</em>
+              </p>
             </div>
 
-            {/* Active chip — swipes in/out from opposite sides (mobile: inner-shell only) */}
-            <div style={{ position: "absolute", top: "calc(50% + 22vw)", left: 0, right: 0, display: "flex", justifyContent: "center", overflow: "hidden" }}>
-              <AnimatePresence mode="popLayout">
-                {chips.filter(ch => ch.shell === 0 && ch.state !== "exiting").map(chip => (
-                  <motion.button
-                    key={chip.id}
-                    initial={chipSubmitCount <= 1
-                      ? { x: 0, opacity: 0, scale: 0.88 }
-                      : { x: chipTransDir * 500, opacity: 0, scale: 1 }
-                    }
-                    animate={{ x: 0, opacity: 1, scale: 1 }}
-                    exit={{
-                      x: chipTransDir * 500, opacity: 0, scale: 0.95,
-                      transition: {
-                        type: "spring", stiffness: 60, damping: 12, mass: 1.5,
-                        opacity: { type: "tween", duration: 0.38, ease: "easeIn" },
-                      },
-                    }}
-                    transition={{
-                      type: "spring", stiffness: 120, damping: 12, mass: 1.5,
-                      opacity: { type: "tween", duration: chipSubmitCount <= 1 ? 1.5 : 0.65, ease: "easeOut" },
-                    }}
-                    onClick={() => handleChipClick(chip.label, chip.href, chip.section)}
-                    style={{
-                      background: "none", border: "none",
-                      borderBottom: "1px solid rgba(0,0,0,0.18)",
-                      padding: "0.1em 0",
-                      fontFamily: '"Playfair Display", serif',
-                      fontSize: "clamp(0.9rem, 4.5vw, 1.2rem)",
-                      letterSpacing: "0.12em",
-                      color: "rgba(0,0,0,0.6)",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
+            {/* Index — typographic table of contents */}
+            <nav className="m-index" aria-label="Site index">
+              <h2 className="m-index-head">
+                <span>index</span>
+                <span className="m-index-rule" aria-hidden />
+              </h2>
+              <ol className="m-index-list">
+                <li>
+                  <Link href="/laugical/store" className="m-index-row">
+                    <span className="m-index-num">01</span>
+                    <span className="m-index-name">laugical</span>
+                    <span className="m-index-note">store</span>
+                    <span className="m-index-arrow" aria-hidden>→</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/temporal" className="m-index-row">
+                    <span className="m-index-num">02</span>
+                    <span className="m-index-name">CKORE</span>
+                    <span className="m-index-note">music · in the log</span>
+                    <span className="m-index-arrow" aria-hidden>→</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/catalogue" className="m-index-row">
+                    <span className="m-index-num">03</span>
+                    <span className="m-index-name">catalogue</span>
+                    <span className="m-index-note">work</span>
+                    <span className="m-index-arrow" aria-hidden>→</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/temporal" className="m-index-row">
+                    <span className="m-index-num">04</span>
+                    <span className="m-index-name">the log</span>
+                    <span className="m-index-note">chronicle</span>
+                    <span className="m-index-arrow" aria-hidden>→</span>
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    className="m-index-row"
+                    type="button"
+                    onClick={() => {
+                      const target = document.querySelector('[data-section="contact"]');
+                      target?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
                   >
-                    {chip.label}
-                  </motion.button>
-                ))}
-              </AnimatePresence>
-            </div>
+                    <span className="m-index-num">05</span>
+                    <span className="m-index-name">contact</span>
+                    <span className="m-index-note">boelie</span>
+                    <span className="m-index-arrow" aria-hidden>↓</span>
+                  </button>
+                </li>
+              </ol>
+            </nav>
 
-            {/* Contact email */}
-            <div style={{
-              position: "absolute", top: "calc(50% + 30vw)", left: 0, right: 0,
-              display: "flex", justifyContent: "center",
-              opacity: contactClicks > 0 ? 1 : 0,
-              transition: "opacity 1s ease-in-out",
-              pointerEvents: contactClicks > 0 ? "auto" : "none",
-            }}>
-              <a href="mailto:Boelie@attalogical.com" className="glossy-text"
-                style={{ display: "inline", paddingBottom: 0, fontSize: "clamp(0.65rem, 3.5vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none" }}>
-                Boelie@attalogical.com
-              </a>
-            </div>
+            {/* Quiet hint */}
+            <p className="m-hint">
+              <em>type below to inquire. answers route inline.</em>
+            </p>
 
-            {/* Search bar — same underline style as desktop, anchored to bottom */}
-            <div style={{ position: "absolute", bottom: "max(4vh, env(safe-area-inset-bottom, 4vh))", left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ position: "relative" }}>
-                <span aria-hidden style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  fontFamily: '"Playfair Display", serif',
-                  fontSize: "1rem", letterSpacing: "0.08em",
-                  color: "rgba(0,0,0,0.35)", pointerEvents: "none",
-                  whiteSpace: "nowrap",
+            {/* Bottom-fixed search + chip pill */}
+            <div className="m-search-dock">
+              {/* Inline chip pill — replaces the orbital chip behavior on mobile.
+                  Appears above the search after a resolution; tap to navigate. */}
+              <div className="m-chip-pill-zone">
+                <AnimatePresence mode="popLayout">
+                  {chips.filter(ch => ch.shell === 0 && ch.state !== "exiting").slice(-1).map(chip => (
+                    <motion.button
+                      key={chip.id}
+                      className="m-chip-pill"
+                      initial={{ y: 12, opacity: 0, scale: 0.96 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      exit={{ y: -8, opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                      onClick={() => handleChipClick(chip.label, chip.href, chip.section)}
+                    >
+                      {chip.label}
+                      <span className="m-chip-pill-arrow" aria-hidden>→</span>
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              <div className="m-search">
+                <span aria-hidden className="m-search-placeholder" style={{
                   opacity: placeholderVisible ? 1 : 0,
-                  transition: "opacity 0.3s",
                 }}>
                   {typedPlaceholder}
                 </span>
@@ -1287,27 +1296,18 @@ export default function Home() {
                   autoComplete="off"
                   autoCorrect="off"
                   spellCheck={false}
+                  className="m-search-input"
                   style={{
-                    width: "85vw",
-                    background: "transparent",
-                    border: "none",
-                    borderBottom: `1px solid ${isAiLoading ? "rgba(80,190,255,0.3)" : "rgba(0,0,0,0.15)"}`,
-                    outline: "none",
-                    fontFamily: '"Playfair Display", serif',
-                    fontSize: "1rem",
-                    color: "#000",
-                    letterSpacing: "0.08em",
-                    padding: "0.4em 0",
-                    textAlign: "center",
-                    caretColor: "#000",
-                    transition: "border-bottom-color 0.4s ease",
+                    borderBottomColor: isAiLoading ? "rgba(80,190,255,0.45)" : "rgba(0,0,0,0.18)",
                   }}
                 />
                 <AnimatePresence>
                   {isAiLoading && (
-                    <motion.div key="water-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <motion.div key="water-m-bs"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
-                      style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "1px", overflow: "hidden", pointerEvents: "none" }}>
+                      className="m-search-water"
+                    >
                       <div className="water-flow" style={{
                         position: "absolute", inset: 0,
                         background: "linear-gradient(90deg, transparent 0%, rgba(80,190,255,0.5) 35%, rgba(160,230,255,0.9) 50%, rgba(80,190,255,0.5) 65%, transparent 100%)",
@@ -1317,8 +1317,23 @@ export default function Home() {
                   )}
                 </AnimatePresence>
               </div>
-
             </div>
+
+            {/* Contact email — surfaces only after engagement (preserves easter-egg behavior) */}
+            <div
+              className="m-contact-reveal"
+              style={{
+                opacity: contactClicks > 0 ? 1 : 0,
+                pointerEvents: contactClicks > 0 ? "auto" : "none",
+              }}
+            >
+              <a href="mailto:Boelie@attalogical.com" className="glossy-text">
+                Boelie@attalogical.com
+              </a>
+            </div>
+
+            {/* Hidden glassRef so chip layer logic doesn't crash if it ever runs on mobile */}
+            <span ref={glassRef} style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} aria-hidden />
           </>
         ) : (
           /* ── DESKTOP HERO ── */
@@ -1607,7 +1622,7 @@ export default function Home() {
           </section>
 
           {/* Contact */}
-          <section ref={contactSectionRef} style={{ padding: isMobile ? "12vw 6vw 12vw 26vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <section ref={contactSectionRef} data-section="contact" style={{ padding: isMobile ? "12vw 6vw 12vw 26vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <div ref={contactHeadingWrapRef} style={{ marginBottom: "4rem" }}>
               <h2 className="glossy-text" style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", letterSpacing: `${0.2 + temporal.letterSpacing * 0.15}em`, textTransform: "uppercase", textAlign: isMobile ? "right" : "left" }}>
                 {c.contact}
@@ -1800,6 +1815,7 @@ export default function Home() {
               {[
                 { label: "Catalogue", href: "/catalogue" },
                 { label: "Subscriptions", href: "/subscriptions" },
+                { label: "The Log", href: "/temporal" },
               ].map(({ label, href }) => (
                 <Link key={label} href={href} style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textDecoration: "none", textTransform: "uppercase" }}>
                   {label}

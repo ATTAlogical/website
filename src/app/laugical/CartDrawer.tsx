@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLaugicalCart } from "@/context/LaugicalCart";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 // ─── Qty stepper ──────────────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ function EmptyBag() {
 export default function CartDrawer() {
   const { items, itemCount, subtotal, isOpen, setOpen, setMusicState } =
     useLaugicalCart();
+  const isMobile = useIsMobile();
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -200,19 +202,30 @@ export default function CartDrawer() {
             aria-hidden
           />
 
-          {/* Panel */}
+          {/* Panel — slide-from-right on desktop, bottom-sheet on mobile */}
           <motion.div
             key="cart-panel"
             ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label={`Bag — ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-            className="cart-panel"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className={isMobile ? "cart-panel cart-panel--sheet" : "cart-panel"}
+            initial={isMobile ? { y: "100%" } : { x: "100%" }}
+            animate={isMobile ? { y: 0 } : { x: 0 }}
+            exit={isMobile ? { y: "100%" } : { x: "100%" }}
+            transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+            drag={isMobile ? "y" : false}
+            dragConstraints={isMobile ? { top: 0, bottom: 0 } : undefined}
+            dragElastic={isMobile ? 0.18 : 0}
+            onDragEnd={isMobile ? (_, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) setOpen(false);
+            } : undefined}
           >
+            {isMobile && (
+              <div className="cart-sheet-handle" aria-hidden>
+                <span />
+              </div>
+            )}
             {/* Header */}
             <div className="cart-header">
               <span className="cart-header-title">bag</span>
