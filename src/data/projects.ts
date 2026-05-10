@@ -80,6 +80,8 @@ export const PROJECTS_DATA: ProjectEntry[] = [
       "/img/prof-sayon-2.png",
       "/img/prof-sayon-3.png",
       "/img/prof-sayon-4.png",
+      "/img/prof-sayon-5.png",
+      "/img/prof-sayon-6.png",
     ],
   },
   {

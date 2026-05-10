@@ -303,6 +303,12 @@ body::after {
 .sub-footer-meta span:first-child { font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,0,0,0.35); }
 .sub-footer-meta span:last-child { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.7); }
 
+/* marquee */
+.marquee-track { display: flex; width: max-content; animation: marquee-scroll 32s linear infinite; }
+.marquee-item { font-family: "Playfair Display", serif; font-size: clamp(0.6rem, 1vw, 0.8rem); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(0,0,0,0.28); white-space: nowrap; display: flex; align-items: center; }
+.marquee-sep { margin: 0 2.5vw; opacity: 0.4; font-size: 0.7em; }
+@keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
 /* contact form */
 .sub-contact { padding: 64px clamp(8px, 2vw, 32px) 96px; overflow: hidden; }
 .sub-contact-trigger { background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: 20px; transition: color 0.2s; }
@@ -320,6 +326,11 @@ body::after {
 .sub-contact-thanks { padding: 32px 0; }
 .sub-contact-thanks-title { font-family: "Playfair Display", serif; font-size: 28px; color: #000; margin: 0 0 14px; }
 .sub-contact-thanks-note { font-family: "Playfair Display", serif; font-style: italic; font-size: 15px; color: rgba(0,0,0,0.5); margin: 0; max-width: 440px; line-height: 1.7; }
+
+@media (max-width: 768px) {
+  .sub-contact-form { width: 100%; }
+  .sub-contact-row { padding: 14px 0; border-bottom-width: 1px; }
+}
 
 @media (max-width: 900px) {
   .sub-plate-grid { grid-template-columns: 1fr; }

@@ -9,6 +9,7 @@ import { useTransitionRouter } from "@/hooks/useTransitionRouter";
 import { type ProjectEntry, PROJECTS_DATA } from "@/data/projects";
 import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
+import { useLang } from "@/context/Language";
 import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
 
 const BAD_WORDS = new Set([
@@ -60,7 +61,7 @@ const CONTENT = {
         role: "Fullstack Developer Intern",
         company: "Stichting Asha",
         city: "Utrecht",
-        period: "Feb 2025 – present",
+        period: "Feb 2025 – Aug 2025",
         description: "Designed and built an internal laptop management system (AshaOS) to manage the organisation's complete laptop fleet.",
         bullets: [
           "Fullstack web app: Next.js, Node.js, GraphQL and PostgreSQL in a Turborepo monorepo",
@@ -91,7 +92,7 @@ const CONTENT = {
         role: "Stagiair Fullstack Developer",
         company: "Stichting Asha",
         city: "Utrecht",
-        period: "feb 2025 – heden",
+        period: "feb 2025 – aug 2025",
         description: "Ontworpen en gebouwd van een intern laptopbeheersysteem (AshaOS) voor het beheren van het volledige laptoppark van de stichting.",
         bullets: [
           "Fullstack webapplicatie: Next.js, Node.js, GraphQL en PostgreSQL in een Turborepo monorepo",
@@ -107,6 +108,11 @@ const CONTENT = {
 
 const LANG_NL = ["nederlands", "dutch", "nl", "NL", "Dutch", "Nederlands"];
 const LANG_EN = ["english", "engels", "eng", "ENG", "English", "Engels"];
+
+const MARQUEE_ITEMS = [
+  "Follow AI", "Medium Sayon", "AshaOS", "ATTA.CKORE", "ATTA Laugical",
+  "Web Development", "Concept & Design", "Brand Systems", "Motion & Interaction",
+];
 
 // ── Atomic orbital chip system ────────────────────────────────────────────────
 // Chips only appear when searched — their shell determines which ring they land in.
@@ -770,6 +776,7 @@ export default function Home() {
   const [chips, setChips] = useState<Chip[]>([]);
   const [chipTransDir, setChipTransDir] = useState<1 | -1>(1);
   const [chipSubmitCount, setChipSubmitCount] = useState(0);
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState<{ value: string; nonce: number } | null>(null);
   const [seriouslyEntry, setSeriouslyEntry] = useState<{ message: string; id: number } | null>(null);
   const [seriouslyCount, setSeriouslyCount] = useState(0);
@@ -783,7 +790,7 @@ export default function Home() {
   const [formError, setFormError] = useState<string | null>(null);
   // Throttle prevents accidental double-submit; 10 s cooldown between sends
   const contactThrottle = useRef(createSubmitThrottle(10_000));
-  const [lang, setLang] = useState<"en" | "nl">("en");
+  const { lang, setLang } = useLang();
   const [laugicalEntry, setLaugicalEntry] = useState<{ message: string; id: number } | null>(null);
   const [showCkoreConfirm, setShowCkoreConfirm] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -842,7 +849,7 @@ export default function Home() {
     if (section === "contact") { setContactClicks(prev => prev + 1); return; }
     // Instant-resolver chips (CKORE, Laugical, logical) — special behaviors
     if (label === "CKORE") { setShowCkoreConfirm(true); return; }
-    if (label === "logical") { setShowExtended(true); return; }
+    if (label === "logical") { setShowExtended(true); if (isMobileRef.current) setShowScrollHint(true); return; }
     if (label === "Laugical") {
       setLaugicalEntry({ message: lang === "nl" ? "Deze pagina is midst compositie" : "This page is midst composition", id: Date.now() });
     }
@@ -920,6 +927,12 @@ export default function Home() {
 
   useEffect(() => { chipsRef.current = chips; }, [chips]);
   useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
+  useEffect(() => {
+    if (!showScrollHint) return;
+    const onScroll = () => { if (window.scrollY > 60) setShowScrollHint(false); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [showScrollHint]);
   useEffect(() => {
     setMounted(true);
     if (sessionStorage.getItem("from-nav") === "1") {
@@ -1427,6 +1440,7 @@ export default function Home() {
                     </AnimatePresence>
                   </span>
                 </div>
+
               </div>
 
               {/* Contact email surface */}
@@ -1587,6 +1601,8 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+        {/* Bottom fade into extended sections */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ height: "6vh", background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1))" }} />
       </div>{/* end hero */}
 
       {/* ── EXTENDED SECTIONS ── */}
@@ -1620,6 +1636,18 @@ export default function Home() {
               </div>
             ))}
           </section>
+
+          {/* Marquee */}
+          <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: isMobile ? "7vw 0" : "3.5vw 0", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: "linear-gradient(90deg, white 0%, transparent 14%, transparent 86%, white 100%)" }} />
+            <div className="marquee-track">
+              {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+                <span key={i} className="marquee-item">
+                  {item}<span className="marquee-sep">·</span>
+                </span>
+              ))}
+            </div>
+          </div>
 
           {/* Contact */}
           <section ref={contactSectionRef} data-section="contact" style={{ padding: isMobile ? "12vw 6vw 12vw 26vw" : "8vw 12vw", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
@@ -1894,60 +1922,6 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── LANGUAGE TOGGLE ── */}
-      <div style={{
-        position: "fixed",
-        ...(isMobile
-          ? { top: "max(2rem, env(safe-area-inset-top, 1.5rem))", left: "max(1.5rem, env(safe-area-inset-left, 1.5rem))" }
-          : { bottom: "max(1.5rem, env(safe-area-inset-bottom, 2rem))", left: "max(2rem, env(safe-area-inset-left, 2rem))" }
-        ),
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
-        zIndex: 100,
-
-      }}>
-
-        <motion.button
-          onClick={() => setLang(l => l === "en" ? "nl" : "en")}
-          whileHover={{ scale: 1.07 }}
-          whileTap={{ scale: 0.91 }}
-          style={{
-            width: "3.1rem", height: "3.1rem",
-            borderRadius: "50%",
-            background: "linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(235,236,240,0.88) 100%)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            border: "1.5px solid rgba(255,255,255,0.75)",
-            boxShadow: [
-              "0 6px 22px rgba(0,0,0,0.13)",
-              "0 2px 6px rgba(0,0,0,0.08)",
-              "inset 0 0 0 1px rgba(0,0,0,0.07)",
-              "inset 0 2.5px 0 rgba(255,255,255,1)",
-              "inset 0 -2.5px 0 rgba(0,0,0,0.14)",
-              "inset 2px 0 0 rgba(255,255,255,0.45)",
-              "inset -2px 0 0 rgba(0,0,0,0.05)",
-            ].join(", "),
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "rgba(0,0,0,0.5)",
-            padding: 0,
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.3rem", height: "1.3rem" }}>
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-        </motion.button>
-        <span style={{
-          fontSize: "0.52rem", letterSpacing: "0.14em",
-          color: "rgba(0,0,0,0.28)", textTransform: "uppercase",
-          fontFamily: '"Playfair Display", serif',
-          userSelect: "none",
-        }}>
-          {lang}
-        </span>
-      </div>
 
       {/* ── CKORE CONFIRM ── */}
       <AnimatePresence>
