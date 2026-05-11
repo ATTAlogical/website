@@ -3,7 +3,7 @@ import { LaugicalCartProvider } from "@/context/LaugicalCart";
 import CartDrawer from "./CartDrawer";
 
 export const metadata: Metadata = {
-  title: "laugical store",
+  title: "Laugical store",
   description: "Designed objects, one-of-one reworks, and curated items.",
 };
 

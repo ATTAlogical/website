@@ -24,9 +24,11 @@ export default function TemporalPage() {
     <main className={isMobile ? "log-page log-page--deck" : "log-page log-page--atlas"}>
       <header className="log-masthead">
         <Link href="/" className="log-masthead-back" aria-label="Back to ATTA logical">
-          ← atta logical
+          ← ATTA logical
         </Link>
-        <span className="log-masthead-title" aria-hidden>the log</span>
+        <span className="log-masthead-title" aria-hidden>
+          {isMobile ? "the log" : "ATTLAS"}
+        </span>
         <LiveTimestamp />
       </header>
 

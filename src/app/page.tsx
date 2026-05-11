@@ -1209,7 +1209,7 @@ export default function Home() {
                 <li>
                   <Link href="/laugical/store" className="m-index-row">
                     <span className="m-index-num">01</span>
-                    <span className="m-index-name">laugical</span>
+                    <span className="m-index-name">Laugical</span>
                     <span className="m-index-note">store</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
                   </Link>

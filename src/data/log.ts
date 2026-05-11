@@ -79,7 +79,7 @@ export const LOG_ENTRIES: LogEntry[] = [
     date: "2026-05-03",
     branch: "laugical",
     type: "milestone",
-    title: "laugical store opens",
+    title: "Laugical store opens",
     body: "First catalogue: stickers, prints, made-to-order garments, and one-of-one reworks.",
     href: "/laugical/store",
     links: ["attalogical-goes-live"],

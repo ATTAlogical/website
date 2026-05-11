@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ATTA Logical",
+  title: "ATTA logical",
   description: "Clean, intentional design — sterile high-tech polish.",
 };
 

@@ -24,7 +24,7 @@ const VALID_ROUTES = [
   "href:/laugical/store",
 ] as const;
 
-const SYSTEM = `You are a chip resolver for a creative portfolio website called ATTA Logical (owner: Boelie van Camp — software developer, musician, visual artist).
+const SYSTEM = `You are a chip resolver for a creative portfolio website called ATTA logical (owner: Boelie van Camp — software developer, musician, visual artist).
 Given a search query, pick the best destination and invent a short label for the chip.
 
 Available routes:
@@ -36,7 +36,7 @@ Available routes:
 
 Rules:
 - Invent a short label (1–3 words, title case). Style: distilled, technical, editorial — like a system tag or a concept node, not a menu item or call-to-action phrase. Prefer terse nouns and noun compounds over verb phrases. Good examples: "Signal", "Build Index", "Rate Card", "Work Log", "Construct", "Open Channel", "Field Record", "Stack", "Output", "Dispatch". Bad examples: "Get In Touch", "Other Websites", "See My Work", "Work History", "Full Catalogue".
-- Never use "ATTA" or "ATTA Logical" in the label. If the query is about the brand itself, use "Logical".
+- Never use "ATTA" or "ATTA logical" in the label. If the query is about the brand itself, use "Logical".
 - Pick the ONE best route. If truly nothing fits, return null for both fields.
 - Be lenient with typos and partial matches.
 - Respond ONLY with valid JSON: {"label":"...","route":"..."} or {"label":null,"route":null}

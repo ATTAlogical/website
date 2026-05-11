@@ -231,6 +231,8 @@ export default function AtlasView({ entries }: { entries: LogEntry[] }) {
   const physicsRef = useRef<PhysicsNode[]>([]);
   const rafRef = useRef<number>(0);
   const reducedMotion = useRef<boolean>(false);
+  /** Paused while the cursor is over the stage — the field holds still so you can read it. */
+  const pausedRef = useRef<boolean>(false);
 
   const [selected, setSelected] = useState<LogEntry | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -284,16 +286,18 @@ export default function AtlasView({ entries }: { entries: LogEntry[] }) {
     });
     setReady(true);
 
-    // Ambient loop — keeps the field alive
+    // Ambient loop — keeps the field alive, but pauses while the cursor is over the stage
     if (reducedMotion.current) return;
     let t = 240;
     const tick = () => {
-      stepPhysics(physicsRef.current, edges, branchMap, t);
-      paintFrame(physicsRef.current, edges, t, {
-        nodes: nodeRefs.current,
-        edges: edgeRefs.current,
-      });
-      t += 1;
+      if (!pausedRef.current) {
+        stepPhysics(physicsRef.current, edges, branchMap, t);
+        paintFrame(physicsRef.current, edges, t, {
+          nodes: nodeRefs.current,
+          edges: edgeRefs.current,
+        });
+        t += 1;
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -302,14 +306,19 @@ export default function AtlasView({ entries }: { entries: LogEntry[] }) {
   }, [entries, edges, branchMap]);
 
   return (
-    <div className="atlas-stage" ref={stageRef}>
+    <div
+      className="atlas-stage"
+      ref={stageRef}
+      onMouseEnter={() => { pausedRef.current = true; }}
+      onMouseLeave={() => { pausedRef.current = false; }}
+    >
       {/* Hint copy */}
       <div className="atlas-hint">
         <p className="atlas-hint-text">
-          a record of work as a living organism. each node is a moment, each line a lineage.
+          ATTLAS — a record of work as a living organism. each node is a moment, each line a lineage.
         </p>
         <p className="atlas-hint-meta" aria-hidden>
-          {entries.length} nodes · {edges.length} connections · hover to trace · click to read
+          {entries.length} nodes · {edges.length} connections · hover to hold · click to read
         </p>
       </div>
 

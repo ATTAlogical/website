@@ -1266,7 +1266,6 @@ body::after {
   font-size: 13px;
   letter-spacing: 0.18em;
   color: rgba(0, 0, 0, 0.35);
-  text-transform: lowercase;
   justify-self: center;
 }
 .log-stamp {

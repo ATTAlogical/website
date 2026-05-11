@@ -24,7 +24,7 @@ export default function StoreSuccessPage() {
         <Link href="/laugical/store" className="store-nav-back">
           ← back to store
         </Link>
-        <span className="store-nav-title" aria-hidden="true">laugical store</span>
+        <span className="store-nav-title" aria-hidden="true">Laugical store</span>
         <span aria-hidden style={{ width: 40 }} />
       </nav>
 

@@ -248,11 +248,11 @@ function StoreNav() {
 
   return (
     <nav className="store-nav" aria-label="Store navigation">
-      <Link href="/" className="store-nav-back" aria-label="Back to atta logical">
-        ← atta logical
+      <Link href="/" className="store-nav-back" aria-label="Back to ATTA logical">
+        ← ATTA logical
       </Link>
 
-      <span className="store-nav-title" aria-hidden="true">laugical store</span>
+      <span className="store-nav-title" aria-hidden="true">Laugical store</span>
 
       <button
         className="store-nav-cart"
@@ -284,7 +284,7 @@ function StoreNav() {
 function StoreHero() {
   return (
     <header className="store-hero store-wrap">
-      <h1 className="store-hero-title">LAUGICAL</h1>
+      <h1 className="store-hero-title">Laugical</h1>
       <span className="store-hero-sub">store</span>
       <hr className="store-hero-rule" />
     </header>
