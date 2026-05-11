@@ -1211,28 +1211,44 @@ body::after {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Temporal Log (/temporal)
+   ─────────────────────────────────────────────────────────────────────────────
+   Desktop: ATLAS — force-directed organic graph (biological feeling).
+   Mobile: CARD DECK — horizontal swipe between months.
+   Shared: page shell, masthead, branch tints.
    ═══════════════════════════════════════════════════════════════ */
 
 .log-page {
-  min-height: 100vh;
+  min-height: 100svh;
   background: oklch(99.2% 0.003 255);
   padding: 0;
-  /* Single column. Editorial. */
-  --log-col: clamp(20px, 6vw, 80px);
+  --log-col: clamp(20px, 5vw, 56px);
+  --atta-color: oklch(36% 0.012 255);
+  --laug-color: oklch(45% 0.085 60);
+  --ckore-color: oklch(42% 0.085 240);
+  --atta-tint: oklch(93% 0.008 255);
+  --laug-tint: oklch(94% 0.022 60);
+  --ckore-tint: oklch(92% 0.022 240);
+}
+.log-page--atlas {
+  overflow: hidden;
+  height: 100svh;
+}
+.log-page--deck {
+  overflow: hidden;
+  height: 100svh;
 }
 
-/* Masthead — fixed top strip */
+/* Masthead — three-column */
 .log-masthead {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: baseline;
-  justify-content: space-between;
-  padding: 18px var(--log-col);
-  background: oklch(99.2% 0.003 255 / 0.92);
-  backdrop-filter: blur(6px);
+  padding: 14px var(--log-col);
+  position: relative;
+  z-index: 50;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+  background: oklch(99.2% 0.003 255 / 0.94);
+  backdrop-filter: blur(6px);
 }
 .log-masthead-back {
   font-family: var(--font-geist-sans), -apple-system, sans-serif;
@@ -1241,115 +1257,354 @@ body::after {
   color: rgba(0, 0, 0, 0.45);
   text-decoration: none;
   transition: color 0.15s;
+  justify-self: start;
 }
 .log-masthead-back:hover { color: rgba(0, 0, 0, 0.85); }
+.log-masthead-title {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: rgba(0, 0, 0, 0.35);
+  text-transform: lowercase;
+  justify-self: center;
+}
 .log-stamp {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: rgba(0, 0, 0, 0.32);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Lede */
-.log-lede {
-  padding: clamp(48px, 8vh, 88px) var(--log-col) clamp(40px, 6vh, 72px);
-  max-width: 880px;
-  margin: 0 auto;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
-}
-.log-lede-title {
-  font-family: "Playfair Display", serif;
-  font-size: clamp(40px, 9vw, 96px);
-  font-weight: 400;
-  font-style: italic;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  color: oklch(8% 0.005 255);
-  margin: 0 0 0.4em;
-}
-.log-lede-sub {
-  font-family: var(--font-geist-sans), -apple-system, sans-serif;
-  font-size: clamp(13px, 1.4vw, 15px);
-  line-height: 1.7;
-  color: rgba(0, 0, 0, 0.5);
-  max-width: 56ch;
-  margin: 0 0 36px;
-}
-
-.log-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-.log-legend li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.log-legend-mark {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.3);
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+}
+
+/* Branch tint utilities (used by both atlas detail panel and deck rows) */
+.log-branch-atta {
+  background: var(--atta-tint);
+  color: var(--atta-color);
+}
+.log-branch-laugical {
+  background: var(--laug-tint);
+  color: var(--laug-color);
+}
+.log-branch-ckore {
+  background: var(--ckore-tint);
+  color: var(--ckore-color);
+}
+
+/* ──────────────── ATLAS (desktop) ──────────────────────────────────────── */
+
+.atlas-stage {
+  position: relative;
+  width: 100%;
+  height: calc(100svh - 54px); /* viewport minus masthead */
+  overflow: hidden;
+}
+
+.atlas-hint {
+  position: absolute;
+  top: 28px;
+  left: var(--log-col);
+  z-index: 5;
+  max-width: 36ch;
+  pointer-events: none;
+}
+.atlas-hint-text {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0 0 8px;
+}
+.atlas-hint-meta {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.28);
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.atlas-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: opacity 0.6s ease;
+}
+
+/* Edges — quadratic bezier with curved control points */
+.atlas-edges path {
+  stroke-linecap: round;
+}
+.atlas-edge {
+  stroke: rgba(0, 0, 0, 0.16);
+  stroke-width: 0.8;
+  transition: stroke 0.3s, stroke-width 0.3s, opacity 0.3s;
+}
+.atlas-edge--active {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.2;
+}
+.atlas-edge--dim {
+  stroke: rgba(0, 0, 0, 0.05);
+  stroke-width: 0.6;
+}
+
+/* Nodes */
+.atlas-node {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.3s;
+}
+.atlas-node:focus-visible .atlas-node-dot {
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+.atlas-node--dim { opacity: 0.32; }
+
+.atlas-node-glow {
+  fill: currentColor;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.atlas-node--hovered .atlas-node-glow,
+.atlas-node--active .atlas-node-glow {
+  opacity: 0.12;
+}
+
+.atlas-node-dot {
+  fill: currentColor;
+  stroke: oklch(99.5% 0.002 255);
+  stroke-width: 1.5;
+  transition: r 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}
+.atlas-node-core {
+  fill: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+/* Per-branch colors (via currentColor on the <g>) */
+.atlas-node--atta { color: var(--atta-color); }
+.atlas-node--laugical { color: var(--laug-color); }
+.atlas-node--ckore { color: var(--ckore-color); }
+
+/* Type-driven size hints are applied via the radius prop in JSX */
+
+/* Subtle pulse on milestones — they're anchors in the graph */
+@keyframes atlas-milestone-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+.atlas-node--milestone .atlas-node-dot {
+  transform-origin: center;
+  animation: atlas-milestone-pulse 4.5s ease-in-out infinite;
+}
+
+/* Node label */
+.atlas-node-label {
+  font-family: "Playfair Display", serif;
+  font-size: 11px;
+  fill: rgba(0, 0, 0, 0.38);
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  user-select: none;
+  transition: fill 0.25s, font-size 0.2s;
+}
+.atlas-node--hovered .atlas-node-label,
+.atlas-node--active .atlas-node-label {
+  fill: oklch(8% 0.005 255);
+  font-size: 12.5px;
+}
+.atlas-node--dim .atlas-node-label {
+  fill: rgba(0, 0, 0, 0.18);
+}
+.atlas-node--selected .atlas-node-label {
+  fill: oklch(0% 0 0);
+  font-weight: 500;
+}
+
+/* Detail panel */
+.atlas-detail {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  bottom: 20px;
+  width: min(340px, calc(100vw - 40px));
+  z-index: 100;
+  background: oklch(99.5% 0.002 255);
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+}
+.atlas-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.atlas-detail-branch {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
   letter-spacing: 0.1em;
   font-weight: 500;
   padding: 3px 7px;
   border-radius: 2px;
-  color: oklch(20% 0.005 255);
 }
-.log-legend-label {
-  font-family: var(--font-geist-sans), -apple-system, sans-serif;
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
+.atlas-detail-date {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
   color: rgba(0, 0, 0, 0.4);
+  font-variant-numeric: tabular-nums;
 }
-
-/* Stream */
-.log-stream {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 0 var(--log-col) clamp(64px, 12vh, 140px);
+.atlas-detail-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
 }
-
-.log-month {
-  margin-top: clamp(40px, 6vh, 72px);
-}
-.log-month:first-child { margin-top: clamp(32px, 5vh, 56px); }
-.log-month-title {
+.atlas-detail-close:hover { color: rgba(0, 0, 0, 0.85); }
+.atlas-detail-glyph {
   font-family: "Playfair Display", serif;
-  font-style: italic;
-  font-size: clamp(20px, 2.6vw, 28px);
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.35);
+  margin-right: 6px;
+}
+.atlas-detail-title {
+  font-family: "Playfair Display", serif;
+  font-size: 22px;
   font-weight: 400;
-  color: oklch(15% 0.005 255);
+  color: oklch(8% 0.005 255);
   margin: 0 0 14px;
+  line-height: 1.2;
   letter-spacing: 0.005em;
 }
-.log-month-rule {
-  height: 0.5px;
-  background: rgba(0, 0, 0, 0.18);
-  margin: 0 0 18px;
+.atlas-detail-body {
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 20px;
+}
+.atlas-detail-link {
+  align-self: flex-start;
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: oklch(8% 0.005 255);
+  text-decoration: none;
+  text-transform: lowercase;
+  padding: 8px 14px;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  margin-top: auto;
+  transition: background 0.15s, color 0.15s;
+}
+.atlas-detail-link:hover {
+  background: oklch(8% 0.005 255);
+  color: oklch(97% 0.002 255);
 }
 
-.log-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ──────────────── CARD DECK (mobile) ──────────────────────────────────── */
+
+.deck-stage {
+  position: relative;
+  height: calc(100svh - 50px);
   display: flex;
   flex-direction: column;
 }
-.log-row-item {
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
-}
-.log-row-item:last-child { border-bottom: none; }
 
-/* Row layout: [day] [branch] [glyph] [title] [body…] */
-.log-row {
+.deck-hint {
+  font-family: "Playfair Display", serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.32);
+  text-align: center;
+  margin: 12px 0 0;
+  font-style: italic;
+}
+
+.deck-track {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+}
+.deck-track::-webkit-scrollbar { display: none; }
+
+.deck-card {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  padding: 18px var(--log-col) 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.deck-card-head {
   display: grid;
-  grid-template-columns: 28px 56px 16px 1fr;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0 0 18px;
+}
+.deck-card-month {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: clamp(28px, 8vw, 36px);
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  margin: 0;
+  color: oklch(10% 0.005 255);
+}
+.deck-card-count {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.38);
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+}
+.deck-card-rule {
+  grid-column: 1 / -1;
+  display: block;
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.16);
+  margin-top: 6px;
+}
+
+.deck-card-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 32px;
+}
+.deck-card-row-item {
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+.deck-card-row-item:last-child { border-bottom: none; }
+
+.deck-row {
+  display: grid;
+  grid-template-columns: 22px 50px 14px 1fr;
   grid-template-rows: auto auto;
-  column-gap: 14px;
+  column-gap: 10px;
   row-gap: 4px;
   padding: 14px 0;
   align-items: baseline;
@@ -1357,113 +1612,91 @@ body::after {
   color: inherit;
   transition: background 0.15s;
 }
-.log-row--link {
-  cursor: pointer;
-  margin-inline: -8px;
-  padding-inline: 8px;
-  border-radius: 3px;
-}
-.log-row--link:hover {
-  background: oklch(96.5% 0.005 255);
-}
+.deck-row--link { cursor: pointer; border-radius: 3px; }
+.deck-row--link:active { background: oklch(96.5% 0.005 255); }
 
-.log-row-day {
+.deck-row-day {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.4);
   font-variant-numeric: tabular-nums;
   text-align: right;
-  letter-spacing: 0;
 }
-.log-row-branch {
+.deck-row-branch {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 10.5px;
+  font-size: 9.5px;
   letter-spacing: 0.1em;
   font-weight: 500;
-  padding: 2px 7px;
+  padding: 2px 5px;
   border-radius: 2px;
   text-align: center;
   align-self: center;
-  /* placed via .log-branch-* tints */
 }
-.log-row-glyph {
+.deck-row-glyph {
   font-family: "Playfair Display", serif;
   font-size: 14px;
   color: rgba(0, 0, 0, 0.35);
   text-align: center;
-  align-self: baseline;
 }
-.log-row-title {
+.deck-row-title {
   font-family: "Playfair Display", serif;
-  font-size: clamp(15px, 1.55vw, 17.5px);
+  font-size: 15px;
   color: oklch(10% 0.005 255);
-  letter-spacing: 0;
-  line-height: 1.35;
+  line-height: 1.3;
 }
-.log-row--link:hover .log-row-title { color: oklch(0% 0 0); }
-.log-row-body {
+.deck-row-body {
   grid-column: 4;
   grid-row: 2;
   font-family: var(--font-geist-sans), -apple-system, sans-serif;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.55;
-  color: rgba(0, 0, 0, 0.48);
-  max-width: 62ch;
+  color: rgba(0, 0, 0, 0.5);
+  max-width: 60ch;
 }
 
-/* Branch tints — quiet, distinct */
-.log-branch-atta {
-  background: oklch(94% 0.006 255);
-  color: oklch(28% 0.01 255);
-}
-.log-branch-laugical {
-  background: oklch(95% 0.018 70);
-  color: oklch(32% 0.06 60);
-}
-.log-branch-ckore {
-  background: oklch(93% 0.018 240);
-  color: oklch(30% 0.06 240);
-}
-
-/* Footer */
-.log-footer {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: clamp(40px, 6vh, 64px) var(--log-col) clamp(60px, 10vh, 120px);
+/* Pager dots */
+.deck-pager {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 14px;
-  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
+  gap: 7px;
+  padding: 14px 0 calc(14px + env(safe-area-inset-bottom, 0));
+  flex-shrink: 0;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.05);
 }
-.log-footer-mark {
-  font-family: "Playfair Display", serif;
-  font-size: 18px;
-  color: rgba(0, 0, 0, 0.18);
+.deck-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
 }
-.log-footer-text {
-  font-family: "Playfair Display", serif;
-  font-style: italic;
-  font-size: 13px;
-  color: rgba(0, 0, 0, 0.32);
-  letter-spacing: 0.02em;
-  margin: 0;
-  text-align: center;
+.deck-dot--current {
+  background: rgba(0, 0, 0, 0.62);
+  transform: scale(1.4);
 }
 
-/* Mobile — keep editorial. Just collapse spacing & body row. */
-@media (max-width: 640px) {
-  .log-row {
-    grid-template-columns: 22px 50px 14px 1fr;
-    column-gap: 10px;
-    padding: 12px 0;
-  }
-  .log-row-day { font-size: 10.5px; }
-  .log-row-branch { font-size: 9.5px; padding: 2px 5px; }
-  .log-row-title { font-size: 14.5px; }
-  .log-row-body { font-size: 12px; }
-  .log-legend { gap: 16px; }
+.deck-current-label {
+  position: absolute;
+  bottom: calc(38px + env(safe-area-inset-bottom, 0));
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.3);
+  text-transform: uppercase;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .atlas-node--milestone .atlas-node-dot { animation: none; }
 }
 
 /* Cancel banner */
