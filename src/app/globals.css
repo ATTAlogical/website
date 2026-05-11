@@ -1698,6 +1698,546 @@ body::after {
   .atlas-node--milestone .atlas-node-dot { animation: none; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   ADMIN
+   Utilitarian. Not branded. Designed to be fast to read and edit.
+   ═══════════════════════════════════════════════════════════════ */
+
+.admin-shell {
+  min-height: 100vh;
+  background: oklch(98% 0.003 255);
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  color: oklch(15% 0.005 255);
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: oklch(99.5% 0.002 255);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.admin-brand {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 14px;
+  color: oklch(10% 0.005 255);
+  text-decoration: none;
+}
+.admin-nav {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.admin-nav a, .admin-nav-logout {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background 0.15s, color 0.15s;
+}
+.admin-nav a:hover, .admin-nav-logout:hover {
+  background: oklch(94% 0.005 255);
+  color: oklch(10% 0.005 255);
+}
+
+.admin-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 36px 28px 96px;
+}
+
+.admin-h1 {
+  font-family: "Playfair Display", serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  margin: 0 0 8px;
+  color: oklch(8% 0.005 255);
+}
+
+.admin-lede {
+  font-size: 13.5px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 0 0 32px;
+}
+
+.admin-error {
+  background: oklch(94% 0.04 25);
+  border: 0.5px solid oklch(70% 0.12 25);
+  color: oklch(35% 0.13 25);
+  padding: 10px 14px;
+  border-radius: 3px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+
+/* ── Overview cards ── */
+
+.admin-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.admin-card {
+  background: oklch(99.5% 0.002 255);
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.admin-card:hover { border-color: rgba(0, 0, 0, 0.4); }
+.admin-card--ghost { opacity: 0.45; cursor: default; }
+.admin-card-name {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+}
+.admin-card-count {
+  font-family: "Playfair Display", serif;
+  font-size: 36px;
+  line-height: 1;
+  color: oklch(8% 0.005 255);
+  margin: 4px 0;
+}
+.admin-card-desc {
+  font-size: 11.5px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Log manager ── */
+
+.admin-log { display: flex; flex-direction: column; gap: 18px; }
+.admin-log-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.admin-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: oklch(99.5% 0.002 255);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.admin-log-table th {
+  text-align: left;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 12px 14px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  background: oklch(97% 0.003 255);
+}
+.admin-log-table td {
+  padding: 12px 14px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+  vertical-align: middle;
+}
+.admin-log-table tr:last-child td { border-bottom: none; }
+
+.admin-cell-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+.admin-cell-slug { color: rgba(0, 0, 0, 0.42); }
+.admin-cell-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-spotify-thumb {
+  border-radius: 2px;
+  display: inline-block;
+}
+.admin-cell-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.admin-empty { padding: 28px; text-align: center; color: rgba(0, 0, 0, 0.4); font-style: italic; }
+
+.admin-pill {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  padding: 3px 7px;
+  border-radius: 2px;
+}
+.admin-pill--atta { background: oklch(93% 0.008 255); color: oklch(28% 0.012 255); }
+.admin-pill--laugical { background: oklch(94% 0.022 60); color: oklch(32% 0.085 60); }
+.admin-pill--ckore { background: oklch(92% 0.022 240); color: oklch(30% 0.085 240); }
+
+.admin-btn {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  padding: 8px 16px;
+  background: oklch(99.5% 0.002 255);
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  border-radius: 3px;
+  cursor: pointer;
+  color: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.admin-btn:hover { background: oklch(96% 0.005 255); }
+.admin-btn--primary {
+  background: oklch(12% 0.005 255);
+  color: oklch(99.5% 0.002 255);
+  border-color: oklch(12% 0.005 255);
+}
+.admin-btn--primary:hover { background: oklch(22% 0.005 255); }
+.admin-btn--primary:disabled { opacity: 0.55; cursor: wait; }
+
+.admin-btn-ghost {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: none;
+  border: none;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background 0.15s, color 0.15s;
+}
+.admin-btn-ghost:hover { background: oklch(94% 0.005 255); color: oklch(10% 0.005 255); }
+.admin-btn-danger:hover { background: oklch(94% 0.04 25); color: oklch(35% 0.13 25); }
+
+/* ── Form ── */
+
+.admin-form {
+  background: oklch(99.5% 0.002 255);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  padding: 20px 24px 24px;
+  margin-bottom: 8px;
+}
+.admin-form-title {
+  font-family: "Playfair Display", serif;
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0 0 18px;
+  color: oklch(10% 0.005 255);
+}
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+.admin-field { display: flex; flex-direction: column; gap: 5px; }
+.admin-field--full { grid-column: 1 / -1; }
+.admin-field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.65);
+}
+.admin-field--brand .admin-brand-compound {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-brand-prefix {
+  font-family: "Playfair Display", serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: oklch(10% 0.005 255);
+  padding: 7px 0;
+}
+.admin-label {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  font-weight: 500;
+}
+.admin-label-tag {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400;
+}
+.admin-input {
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  font-size: 13.5px;
+  padding: 7px 10px;
+  background: oklch(100% 0 0);
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  border-radius: 3px;
+  color: oklch(8% 0.005 255);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.admin-input:focus { border-color: oklch(40% 0.08 240); }
+.admin-input--mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
+.admin-hint {
+  font-size: 11.5px;
+  color: rgba(0, 0, 0, 0.42);
+  font-style: italic;
+}
+
+.admin-link-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-link-chip {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  padding: 5px 10px;
+  background: oklch(96% 0.005 255);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.55);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.admin-link-chip:hover { background: oklch(92% 0.008 255); color: oklch(10% 0.005 255); }
+.admin-link-chip--on {
+  background: oklch(12% 0.005 255);
+  color: oklch(99.5% 0.002 255);
+  border-color: oklch(12% 0.005 255);
+}
+.admin-link-chip--on:hover { background: oklch(22% 0.005 255); }
+
+.admin-form-actions {
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LOGIN MODAL (homepage overlay)
+   ═══════════════════════════════════════════════════════════════ */
+
+.login-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(4px);
+}
+.login-modal {
+  position: fixed;
+  z-index: 301;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, 90vw);
+  background: oklch(99.5% 0.002 255);
+  border-radius: 8px;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+  padding: 28px;
+}
+.login-modal-title {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 18px;
+  margin: 0 0 18px;
+  color: oklch(10% 0.005 255);
+}
+.login-input {
+  width: 100%;
+  font-family: "Playfair Display", serif;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  outline: none;
+  color: oklch(8% 0.005 255);
+}
+.login-input:focus { border-bottom-color: oklch(20% 0.005 255); }
+.login-error {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: oklch(45% 0.18 25);
+}
+.login-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 22px;
+}
+.login-cancel {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+  padding: 4px 6px;
+}
+.login-submit {
+  font-family: var(--font-geist-sans), -apple-system, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  background: oklch(10% 0.005 255);
+  color: oklch(99.5% 0.002 255);
+  border: none;
+  cursor: pointer;
+  padding: 10px 22px;
+  border-radius: 3px;
+}
+.login-submit:disabled { opacity: 0.55; cursor: wait; }
+
+/* ATTA-clickable hint on the homepage title */
+.atta-clickable {
+  cursor: pointer;
+  position: relative;
+}
+.atta-clickable::after {
+  content: "";
+  position: absolute;
+  inset: -4px -2px;
+  border-radius: 3px;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  transition: box-shadow 0.4s ease;
+}
+.atta-clickable:hover::after {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08), 0 0 12px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MUSIC SIDEBAR (CKORE — on /temporal)
+   Shows Spotify-linked tracks with cover art. Desktop: fixed bottom-left.
+   Mobile: inline section inside each CardDeck CKORE row.
+   ═══════════════════════════════════════════════════════════════ */
+
+.music-sidebar {
+  position: fixed;
+  bottom: 28px;
+  left: 28px;
+  z-index: 40;
+  width: 280px;
+  background: oklch(99.5% 0.002 255 / 0.96);
+  backdrop-filter: blur(8px);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.music-sidebar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  padding-bottom: 4px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+.music-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 9px;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  padding: 5px 4px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+.music-row:hover { background: oklch(96% 0.005 255); }
+.music-row-cover {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  object-fit: cover;
+  display: block;
+}
+.music-row-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.music-row-title {
+  font-family: "Playfair Display", serif;
+  font-size: 12.5px;
+  color: oklch(10% 0.005 255);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.music-row-date {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  color: rgba(0, 0, 0, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inline in card deck rows (mobile) */
+.deck-spotify {
+  grid-column: 4;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+.deck-spotify-cover {
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+.deck-spotify-title {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-size: 11.5px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 720px) {
+  .music-sidebar { display: none; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+  .admin-log-table th:nth-child(5),
+  .admin-log-table td:nth-child(5) { display: none; }
+}
+
 /* Cancel banner */
 .store-cancel-banner {
   position: sticky;

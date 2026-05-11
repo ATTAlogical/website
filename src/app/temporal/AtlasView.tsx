@@ -175,11 +175,17 @@ function neighborSet(slug: string, edges: Array<{ from: string; to: string }>): 
 
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
+type EntryWithSpotify = LogEntry & {
+  spotifyUrl?: string | null;
+  spotifyTitle?: string | null;
+  spotifyThumb?: string | null;
+};
+
 function DetailPanel({
   entry,
   onClose,
 }: {
-  entry: LogEntry;
+  entry: EntryWithSpotify;
   onClose: () => void;
 }) {
   return (
@@ -207,6 +213,27 @@ function DetailPanel({
         {entry.title}
       </h3>
       {entry.body && <p className="atlas-detail-body">{entry.body}</p>}
+      {entry.spotifyUrl && entry.spotifyThumb && (
+        <a
+          href={entry.spotifyUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="music-row"
+          style={{ marginBottom: 18 }}
+        >
+          <img
+            src={entry.spotifyThumb}
+            alt=""
+            className="music-row-cover"
+            loading="lazy"
+            decoding="async"
+          />
+          <span className="music-row-meta">
+            <span className="music-row-title">{entry.spotifyTitle ?? "Listen on Spotify"}</span>
+            <span className="music-row-date">spotify ↗</span>
+          </span>
+        </a>
+      )}
       {entry.href && (
         entry.external ? (
           <a href={entry.href} target="_blank" rel="noreferrer" className="atlas-detail-link">
@@ -224,7 +251,7 @@ function DetailPanel({
 
 // ─── AtlasView ────────────────────────────────────────────────────────────────
 
-export default function AtlasView({ entries }: { entries: LogEntry[] }) {
+export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Map<string, SVGGElement>>(new Map());
   const edgeRefs = useRef<Map<string, SVGPathElement>>(new Map());

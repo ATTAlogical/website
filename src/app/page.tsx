@@ -11,6 +11,7 @@ import { resolveChip } from "@/lib/chipResolver";
 import { useCkoreAudio } from "@/context/CkoreAudio";
 import { useLang } from "@/context/Language";
 import { validateName, validateEmail, validateMessage, createSubmitThrottle } from "@/lib/validation";
+import LoginModal from "./LoginModal";
 
 const BAD_WORDS = new Set([
   "fuck","shit","ass","bitch","bastard","damn","crap","piss","dick","cock","pussy",
@@ -778,6 +779,10 @@ export default function Home() {
   const [chipSubmitCount, setChipSubmitCount] = useState(0);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState<{ value: string; nonce: number } | null>(null);
+
+  // Hidden admin entrance: type "login" in the search → ATTA becomes clickable → modal
+  const [loginUnlocked, setLoginUnlocked] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [seriouslyEntry, setSeriouslyEntry] = useState<{ message: string; id: number } | null>(null);
   const [seriouslyCount, setSeriouslyCount] = useState(0);
   const [showYoureDone, setShowYoureDone] = useState(false);
@@ -1101,6 +1106,13 @@ export default function Home() {
     if (!submittedQuery) return;
     const q = submittedQuery.value;
 
+    // Hidden admin entrance — never surfaces a chip
+    const qLower = q.toLowerCase().trim();
+    if (qLower === "login" || qLower === "admin") {
+      setLoginUnlocked(true);
+      return;
+    }
+
     if (isBadWord(q)) return;
 
     const resolved = resolveChip(q);
@@ -1405,7 +1417,16 @@ export default function Home() {
                   }}
                 >
                   <span style={{ position: "relative", display: "inline-block" }}>
-                    <span className="glossy-text">ATTA logical</span>
+                    <span className="glossy-text">
+                      <span
+                        className={loginUnlocked ? "atta-clickable" : undefined}
+                        role={loginUnlocked ? "button" : undefined}
+                        tabIndex={loginUnlocked ? 0 : undefined}
+                        aria-label={loginUnlocked ? "Open admin login" : undefined}
+                        onClick={loginUnlocked ? () => setLoginOpen(true) : undefined}
+                        onKeyDown={loginUnlocked ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLoginOpen(true); } } : undefined}
+                      >ATTA</span> logical
+                    </span>
                     <AnimatePresence>
                       {showQuestionMark && (
                         <motion.span key="qm-d" style={QMARK_STYLE}
@@ -2037,7 +2058,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
   );
 }

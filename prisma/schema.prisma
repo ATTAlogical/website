@@ -1,0 +1,50 @@
+// Prisma schema for ATTA logical.
+// Database: Neon Postgres. Edit + run `npx prisma migrate dev` after changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: use direct (non-pooled) URL for migrations. If you only have one, set them both to the same.
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Log entries ──────────────────────────────────────────────────────────────
+// One row per moment in the ATTA logical universe. Branches: ATTA logical (atta),
+// ATTA Laugical (laugical), ATTA CKORE (ckore). CKORE entries can optionally
+// carry a Spotify URL — when present, oEmbed metadata is cached on the row.
+
+model LogEntry {
+  id           String   @id @default(cuid())
+  /// Stable kebab-case slug — used for lineage (links).
+  slug         String   @unique
+  /// Date of the event (date only, no time).
+  date         DateTime @db.Date
+  /// One of: "atta" | "laugical" | "ckore"
+  branch       String
+  /// One of: "build" | "project" | "track" | "drop" | "note" | "milestone"
+  type         String
+  title        String
+  body         String?
+  /// Optional internal route or external URL.
+  href         String?
+  external     Boolean  @default(false)
+  /// Slugs this entry grows out of. Directed edges; renders as connections in ATTLAS.
+  links        String[]
+
+  /// CKORE-only. The raw Spotify track URL.
+  spotifyUrl   String?
+  /// Cached oEmbed title (e.g. "Untitled by CKORE").
+  spotifyTitle String?
+  /// Cached oEmbed album-art thumbnail URL.
+  spotifyThumb String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([branch])
+  @@index([date])
+}

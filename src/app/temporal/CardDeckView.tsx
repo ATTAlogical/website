@@ -11,7 +11,13 @@ import {
 
 // ─── Entry row (compact, mobile) ──────────────────────────────────────────────
 
-function EntryRow({ entry }: { entry: LogEntry }) {
+type EntryWithSpotify = LogEntry & {
+  spotifyUrl?: string | null;
+  spotifyTitle?: string | null;
+  spotifyThumb?: string | null;
+};
+
+function EntryRow({ entry }: { entry: EntryWithSpotify }) {
   const dayNum = String(new Date(entry.date).getDate()).padStart(2, "0");
   const glyph = TYPE_GLYPH[entry.type];
 
@@ -24,6 +30,20 @@ function EntryRow({ entry }: { entry: LogEntry }) {
       <span className="deck-row-glyph" aria-hidden>{glyph}</span>
       <span className="deck-row-title">{entry.title}</span>
       {entry.body && <span className="deck-row-body">{entry.body}</span>}
+      {entry.spotifyUrl && entry.spotifyThumb && (
+        <a
+          href={entry.spotifyUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="deck-spotify"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img src={entry.spotifyThumb} alt="" className="deck-spotify-cover" loading="lazy" />
+          <span className="deck-spotify-title">
+            {entry.spotifyTitle ?? "Listen on Spotify"}
+          </span>
+        </a>
+      )}
     </>
   );
 
@@ -46,7 +66,7 @@ function EntryRow({ entry }: { entry: LogEntry }) {
 
 // ─── CardDeckView ─────────────────────────────────────────────────────────────
 
-export default function CardDeckView({ entries }: { entries: LogEntry[] }) {
+export default function CardDeckView({ entries }: { entries: EntryWithSpotify[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const months = useMemo(() => Array.from(groupByMonth(entries).entries()), [entries]);
   const [current, setCurrent] = useState(0);
