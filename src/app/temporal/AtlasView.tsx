@@ -50,14 +50,20 @@ function stepPhysics(
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
 
+  // Determine the currently-expanded "family root" — when the user hovers a
+  // child track, the family root is that track's parent album (so the album
+  // and all its siblings stay expanded). When hovering an album directly,
+  // the family root is the album itself.
+  const familyRoot = expandedParent
+    ? (parentMap.get(expandedParent) ?? expandedParent)
+    : null;
+
   // Pre-compute which nodes are "collapsed children" — they have a parent and
-  // their parent isn't the currently-expanded one. Collapsed children sit on
-  // top of their parent (invisible via CSS); they shouldn't participate in any
-  // force loops or they'd explode each other.
+  // their parent isn't the currently-expanded family root.
   const isCollapsed: boolean[] = new Array(nodes.length);
   for (let i = 0; i < nodes.length; i++) {
     const parentSlug = parentMap.get(nodes[i].slug);
-    isCollapsed[i] = !!parentSlug && parentSlug !== expandedParent;
+    isCollapsed[i] = !!parentSlug && parentSlug !== familyRoot;
   }
 
   // Per-node forces (centering, walls, drift, damping). Skip collapsed.
@@ -351,6 +357,26 @@ export default function AtlasView({
     }
     return base;
   }, [entries]);
+
+  /** Entries sorted for SVG rendering: children first (rendered below), parents
+   *  on top. Means clicking on an album-sized area hits the album, not a child
+   *  that's still visually overlapping during expansion ramp. */
+  const renderEntries = useMemo(() => {
+    return [...entries].sort((a, b) => {
+      const aChild = !!a.parentSlug;
+      const bChild = !!b.parentSlug;
+      if (aChild && !bChild) return -1;
+      if (!aChild && bChild) return 1;
+      return 0;
+    });
+  }, [entries]);
+
+  /** Same family-root logic as physics — keeps child + sibling tracks visible
+   *  when the user hovers any member of the same album family. */
+  const familyRoot = useMemo(() => {
+    if (!hovered) return null;
+    return parentMap.get(hovered) ?? hovered;
+  }, [hovered, parentMap]);
   /** Which edges are parent→child (rendered with dashed style + collapse-aware visibility) */
   const parentEdgeKeys = useMemo(() => {
     const set = new Set<string>();
@@ -424,13 +450,14 @@ export default function AtlasView({
         : f + (target - f) * RAMP_PER_FRAME;
       factorRef.current = next;
 
-      // Ramp expansion factor: 1 when a parent with children is hovered, 0 otherwise.
-      // When the hovered slug changes from one parent to ANOTHER (not just on/off),
-      // reset the factor to 0 so the new children start fresh from collapsed instead
-      // of inheriting the previous album's full expansion.
+      // Ramp expansion factor. Only reset to 0 when the user moves between
+      // DIFFERENT families (different album groups). Moving from an album to
+      // one of its own children doesn't reset — they're the same family.
       const currHover = hoveredRef.current;
       const prevHover = prevHoveredRef.current;
-      if (currHover !== prevHover && currHover && prevHover) {
+      const currFamily = currHover ? (parentMap.get(currHover) ?? currHover) : null;
+      const prevFamily = prevHover ? (parentMap.get(prevHover) ?? prevHover) : null;
+      if (currFamily !== prevFamily && currFamily && prevFamily) {
         expandFactorRef.current = 0;
       }
       prevHoveredRef.current = currHover;
@@ -508,7 +535,7 @@ export default function AtlasView({
             const toIsChild = parentMap.has(e.to);
             const childSlug = fromIsChild ? e.from : toIsChild ? e.to : null;
             const childParent = childSlug ? parentMap.get(childSlug) : null;
-            const childCollapsed = !!childParent && childParent !== hovered;
+            const childCollapsed = !!childParent && childParent !== familyRoot;
             return (
               <path
                 key={key}
@@ -530,9 +557,9 @@ export default function AtlasView({
           })}
         </g>
 
-        {/* Nodes */}
+        {/* Nodes — children rendered first (below), parents on top */}
         <g className="atlas-nodes">
-          {entries.map((entry) => {
+          {renderEntries.map((entry) => {
             const isActive = activeSet ? activeSet.has(entry.slug) : false;
             const isDim = activeSet ? !isActive : false;
             const isHovered = hovered === entry.slug;
@@ -582,7 +609,7 @@ export default function AtlasView({
                   isSelected && "atlas-node--selected",
                   // Child node — collapsed unless its parent is hovered
                   entry.parentSlug && "atlas-node--child",
-                  entry.parentSlug && entry.parentSlug !== hovered && "atlas-node--collapsed",
+                  entry.parentSlug && entry.parentSlug !== familyRoot && "atlas-node--collapsed",
                 ].filter(Boolean).join(" ")}
                 style={groupStyle as React.CSSProperties}
                 tabIndex={0}
