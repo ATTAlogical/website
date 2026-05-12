@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
-  fetchArtistAllTracksDiag,
-  fetchAudioFeatures,
+  fetchArtistAllAlbums,
   extractArtistId,
   lastFetchError,
 } from "@/lib/spotifyApi";
@@ -19,7 +18,7 @@ function slugify(input: string): string {
 }
 
 async function uniqueSlug(base: string): Promise<string> {
-  let candidate = base || `track-${Date.now()}`;
+  let candidate = base || `album-${Date.now()}`;
   let n = 0;
   while (await prisma.logEntry.findUnique({ where: { slug: candidate } })) {
     n += 1;
@@ -28,16 +27,22 @@ async function uniqueSlug(base: string): Promise<string> {
   return candidate;
 }
 
+function parseReleaseDate(raw: string): Date {
+  // Spotify returns "YYYY", "YYYY-MM", or "YYYY-MM-DD"
+  if (raw.length === 4) return new Date(`${raw}-01-01`);
+  if (raw.length === 7) return new Date(`${raw}-01`);
+  return new Date(raw);
+}
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {
-    /* empty body is fine — fall back to settings */
+    /* empty body is fine */
   }
 
-  // Resolve artist ID: from request body, or from SiteSettings.spotifyArtistId,
-  // or extracted from SiteSettings.spotifyProfile URL.
+  // Resolve artist ID
   let artistId: string | null = null;
   if (typeof body.artistId === "string" && body.artistId.trim()) {
     artistId = body.artistId.trim();
@@ -54,9 +59,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { tracks, reason, albumCount } = await fetchArtistAllTracksDiag(artistId);
-  if (tracks.length === 0) {
-    // Capture the actual HTTP status from the last failed Spotify call.
+  const { albums, reason } = await fetchArtistAllAlbums(artistId);
+  if (albums.length === 0) {
     const err = lastFetchError;
     const statusDetail = err
       ? ` Spotify returned ${err.status} ${err.statusText} on ${err.path}${err.body ? ` — body: ${err.body}` : ""}.`
@@ -67,16 +71,14 @@ export async function POST(req: NextRequest) {
       ? `Artist API call failed for ID "${artistId}".${statusDetail}`
       : reason === "no-albums"
       ? `Artist exists but has zero albums/singles on Spotify yet.${statusDetail}`
-      : reason === "no-tracks-in-albums"
-      ? `Artist has ${albumCount ?? "some"} albums but no tracks inside them.${statusDetail}`
-      : `Spotify returned no tracks.${statusDetail}`;
+      : `Spotify returned no albums.${statusDetail}`;
     return NextResponse.json(
       { error: reasonText, artistId, reason },
       { status: 502 },
     );
   }
 
-  // Find tracks we already have (by spotifyUrl) so we don't duplicate
+  // Skip albums we already have, matched by Spotify URL
   const existingByUrl = await prisma.logEntry.findMany({
     where: { branch: "ckore", spotifyUrl: { not: null } },
     select: { spotifyUrl: true },
@@ -87,8 +89,8 @@ export async function POST(req: NextRequest) {
   let skipped = 0;
   const errors: string[] = [];
 
-  for (const track of tracks) {
-    const url = track.external_urls?.spotify;
+  for (const album of albums) {
+    const url = album.external_urls?.spotify;
     if (!url) {
       skipped += 1;
       continue;
@@ -98,48 +100,47 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const features = await fetchAudioFeatures(track.id);
-    const thumb = track.album.images.reduce<{ url: string; width: number } | null>(
+    // Pick the smallest cover image (good for thumbnail / sidebar)
+    const thumb = album.images.reduce<{ url: string; width: number } | null>(
       (best, img) => (!best ? img : img.width < best.width ? img : best),
       null,
     );
-    const baseSlug = slugify(track.name);
+
+    const baseSlug = slugify(album.name);
     const slug = await uniqueSlug(baseSlug);
+    const artists = album.artists.map((a) => a.name).join(", ");
 
     try {
       await prisma.logEntry.create({
         data: {
           slug,
-          date: new Date(track.album.release_date.length === 4
-            ? `${track.album.release_date}-01-01`
-            : track.album.release_date.length === 7
-            ? `${track.album.release_date}-01`
-            : track.album.release_date),
+          date: parseReleaseDate(album.release_date),
           branch: "ckore",
-          type: "track",
-          title: track.name,
+          type: "album",
+          title: album.name,
           body: null,
           href: null,
           external: false,
           links: [],
           spotifyUrl: url,
-          spotifyTitle: `${track.name} — ${track.artists.map((a) => a.name).join(", ")}`,
+          spotifyTitle: `${album.name} — ${artists}`,
           spotifyThumb: thumb?.url ?? null,
-          spotifyDurationMs: track.duration_ms,
-          spotifyReleaseDate: track.album.release_date,
-          spotifyArtist: track.artists.map((a) => a.name).join(", "),
-          spotifyAlbum: track.album.name,
-          spotifyPreviewUrl: track.preview_url,
-          spotifyPopularity: track.popularity,
-          spotifyTempo: features?.tempo ?? null,
-          spotifyEnergy: features?.energy ?? null,
-          spotifyValence: features?.valence ?? null,
-          spotifyDanceability: features?.danceability ?? null,
+          spotifyReleaseDate: album.release_date,
+          spotifyArtist: artists,
+          spotifyAlbum: album.name,
+          // Album-level entries don't have per-track fields:
+          spotifyDurationMs: null,
+          spotifyPreviewUrl: null,
+          spotifyPopularity: null,
+          spotifyTempo: null,
+          spotifyEnergy: null,
+          spotifyValence: null,
+          spotifyDanceability: null,
         },
       });
       created += 1;
     } catch (e) {
-      errors.push(`${track.name}: ${e instanceof Error ? e.message : "create failed"}`);
+      errors.push(`${album.name}: ${e instanceof Error ? e.message : "create failed"}`);
     }
   }
 
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     created,
     skipped,
-    total: tracks.length,
+    total: albums.length,
     errors: errors.slice(0, 10),
   });
 }

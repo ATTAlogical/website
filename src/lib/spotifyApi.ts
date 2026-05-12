@@ -164,12 +164,74 @@ export async function fetchArtist(id: string): Promise<SpotifyArtistDetail | nul
   return authedFetch<SpotifyArtistDetail>(`/artists/${encodeURIComponent(id)}`);
 }
 
+export type SimplifiedAlbum = {
+  id: string;
+  name: string;
+  album_type: "album" | "single" | "compilation";
+  release_date: string;
+  release_date_precision: "year" | "month" | "day";
+  images: SpotifyImage[];
+  external_urls: { spotify: string };
+  total_tracks: number;
+  artists: SpotifyArtist[];
+};
+
 export type ImportDiagnostic = {
   tracks: SpotifyTrack[];
   /** Diagnostic reasons when the result is empty. */
   reason?: "no-token" | "artist-not-found" | "no-albums" | "no-tracks-in-albums";
   albumCount?: number;
 };
+
+export type ImportAlbumsDiagnostic = {
+  albums: SimplifiedAlbum[];
+  reason?: "no-token" | "artist-not-found" | "no-albums";
+};
+
+/** Fetches every album + single for an artist. Returns the simplified album
+ *  objects directly from /artists/{id}/albums (no need to drill into tracks). */
+export async function fetchArtistAllAlbums(artistId: string): Promise<ImportAlbumsDiagnostic> {
+  const token = await getToken();
+  if (!token) return { albums: [], reason: "no-token" };
+
+  type AlbumsPage = {
+    items: SimplifiedAlbum[];
+    next: string | null;
+  };
+
+  const collected: SimplifiedAlbum[] = [];
+  let nextPath: string | null =
+    `/artists/${encodeURIComponent(artistId)}/albums?` +
+    new URLSearchParams({ include_groups: "album,single" }).toString();
+  let safety = 0;
+  let firstPage = true;
+  while (nextPath && safety < 20) {
+    safety += 1;
+    const page: AlbumsPage | null = await authedFetch<AlbumsPage>(nextPath);
+    if (!page) {
+      if (firstPage) return { albums: [], reason: "artist-not-found" };
+      break;
+    }
+    firstPage = false;
+    for (const album of page.items) {
+      collected.push(album);
+    }
+    nextPath = page.next ? page.next.replace(API_BASE, "") : null;
+  }
+
+  if (collected.length === 0) {
+    return { albums: [], reason: "no-albums" };
+  }
+
+  // De-dup by id (same album can appear under multiple album_groups)
+  const seen = new Set<string>();
+  const unique = collected.filter((a) => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
+  return { albums: unique };
+}
 
 /** Fetches every track from every album of an artist. Albums + singles, no compilations.
  *  Returns a diagnostic object so admin UI can show *why* zero tracks came back. */

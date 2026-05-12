@@ -5,7 +5,8 @@ export type Branch = "atta" | "laugical" | "ckore";
 export type LogEntryType =
   | "build"      // a feature, system, or technical milestone
   | "project"    // client / commissioned / public work shipped
-  | "track"      // a music release, draft, or session
+  | "album"      // a music album or EP release
+  | "track"      // a single track / draft / session (smaller than an album)
   | "drop"       // a store drop, edition release, or product
   | "profile"    // an account / artist profile node (e.g. ATTA.CKORE on Spotify)
   | "note"       // a written observation or thought
@@ -168,6 +169,7 @@ export const BRANCH_LABEL: Record<Branch, string> = {
 export const TYPE_GLYPH: Record<LogEntryType, string> = {
   build: "·",
   project: "↗",
+  album: "▦",
   track: "♪",
   drop: "€",
   profile: "◉",
@@ -179,6 +181,7 @@ export const TYPE_GLYPH: Record<LogEntryType, string> = {
 export const TYPE_WEIGHT: Record<LogEntryType, number> = {
   profile: 1.8,    // artist hub: the largest, connects to everything
   milestone: 1.6,
+  album: 1.45,    // full release, sits between project and track
   project: 1.3,
   drop: 1.15,
   track: 1.0,

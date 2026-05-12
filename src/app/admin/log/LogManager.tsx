@@ -41,6 +41,7 @@ const BRANCH_OPTIONS: { value: AdminEntry["branch"]; label: string }[] = [
 const TYPE_OPTIONS: AdminEntry["type"][] = [
   "build",
   "project",
+  "album",
   "track",
   "drop",
   "profile",
