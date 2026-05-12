@@ -39,6 +39,10 @@ function stepPhysics(
   t: number,
   /** Force-intensity multiplier 0..1. At 1 = normal motion. At 0 = no new forces, existing velocity damps to rest. */
   factor: number = 1,
+  /** Map of child slug → parent slug. Children get pulled toward their parent. */
+  parentMap: Map<string, string> = new Map(),
+  /** Slug of currently-expanded parent (children spread outward); null = all collapsed. */
+  expandedParent: string | null = null,
 ) {
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
@@ -111,6 +115,31 @@ function stepPhysics(
     b.vy -= ny * f * STEP_DT;
   }
 
+  // Parent-spring: pull child nodes toward their parent's position.
+  // Rest distance = 0 when collapsed (children sit on top of parent, hidden by
+  // CSS visibility). Rest = 80 when this child's parent is currently expanded
+  // so children form a tight orbit around the parent.
+  const PARENT_SPRING_K = 0.06;
+  const EXPANDED_REST = 80;
+  for (const [childSlug, parentSlug] of parentMap.entries()) {
+    const ci = byIndex.get(childSlug);
+    const pi = byIndex.get(parentSlug);
+    if (ci === undefined || pi === undefined) continue;
+    const child = nodes[ci];
+    const parent = nodes[pi];
+    const dx = parent.x - child.x;
+    const dy = parent.y - child.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
+    const rest = parentSlug === expandedParent ? EXPANDED_REST : 0;
+    const stretch = dist - rest;
+    const f = stretch * PARENT_SPRING_K;
+    const nx = dx / dist;
+    const ny = dy / dist;
+    child.vx += nx * f;
+    child.vy += ny * f;
+    // Don't push the parent — it's the anchor
+  }
+
   // Integrate
   for (const n of nodes) {
     n.x += n.vx;
@@ -178,6 +207,7 @@ function neighborSet(slug: string, edges: Array<{ from: string; to: string }>): 
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
 type EntryWithSpotify = LogEntry & {
+  parentSlug?: string | null;
   spotifyUrl?: string | null;
   spotifyTitle?: string | null;
   spotifyThumb?: string | null;
@@ -239,11 +269,22 @@ export default function AtlasView({
 
   const [hovered, setHovered] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  /** Mirror of `hovered` accessible inside the rAF loop without re-binding. */
+  const hoveredRef = useRef<string | null>(null);
+  useEffect(() => { hoveredRef.current = hovered; }, [hovered]);
 
   const edges = useMemo(() => computeEdges(entries), [entries]);
   const branchMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of entries) m.set(e.slug, e.branch);
+    return m;
+  }, [entries]);
+  /** child slug → parent slug, for nodes with a parentSlug (e.g. tracks under albums). */
+  const parentMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of entries) {
+      if (e.parentSlug) m.set(e.slug, e.parentSlug);
+    }
     return m;
   }, [entries]);
   const activeSet = useMemo(
@@ -278,9 +319,11 @@ export default function AtlasView({
       };
     });
 
-    // Pre-settle the layout with hidden iterations so the initial paint looks composed
+    // Pre-settle the layout with hidden iterations so the initial paint looks composed.
+    // Initial settle has all children collapsed (no expanded parent), so tracks
+    // sit on top of their parent album.
     for (let k = 0; k < 400; k++) {
-      stepPhysics(physicsRef.current, edges, branchMap, k);
+      stepPhysics(physicsRef.current, edges, branchMap, k, 1, parentMap, null);
     }
     paintFrame(physicsRef.current, edges, 240, {
       nodes: nodeRefs.current,
@@ -303,7 +346,15 @@ export default function AtlasView({
         : f + (target - f) * RAMP_PER_FRAME;
       factorRef.current = next;
 
-      stepPhysics(physicsRef.current, edges, branchMap, t, next);
+      stepPhysics(
+        physicsRef.current,
+        edges,
+        branchMap,
+        t,
+        next,
+        parentMap,
+        hoveredRef.current,
+      );
       paintFrame(
         physicsRef.current,
         edges,
@@ -322,7 +373,7 @@ export default function AtlasView({
       cancelAnimationFrame(rafRef.current);
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     };
-  }, [entries, edges, branchMap]);
+  }, [entries, edges, branchMap, parentMap]);
 
   return (
     <div
@@ -418,6 +469,9 @@ export default function AtlasView({
                   isDim && "atlas-node--dim",
                   isHovered && "atlas-node--hovered",
                   isSelected && "atlas-node--selected",
+                  // Child node — collapsed unless its parent is hovered
+                  entry.parentSlug && "atlas-node--child",
+                  entry.parentSlug && entry.parentSlug !== hovered && "atlas-node--collapsed",
                 ].filter(Boolean).join(" ")}
                 style={groupStyle as React.CSSProperties}
                 tabIndex={0}

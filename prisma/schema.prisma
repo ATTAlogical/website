@@ -34,6 +34,10 @@ model LogEntry {
   external     Boolean  @default(false)
   /// Slugs this entry grows out of. Directed edges; renders as connections in ATTLAS.
   links        String[]
+  /// Slug of a parent entry — currently used for tracks that belong inside an
+  /// album. Tracks with parentSlug are hidden in ATTLAS until the parent is
+  /// hovered, then they "pop out" radially around the parent.
+  parentSlug   String?
 
   /// CKORE-only. The raw Spotify track URL.
   spotifyUrl   String?
@@ -67,6 +71,7 @@ model LogEntry {
 
   @@index([branch])
   @@index([date])
+  @@index([parentSlug])
 }
 
 // ─── Site settings ────────────────────────────────────────────────────────────

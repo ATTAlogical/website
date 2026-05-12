@@ -24,6 +24,7 @@ export default async function TemporalPage() {
     href: r.href ?? undefined,
     external: r.external,
     links: r.links,
+    parentSlug: r.parentSlug,
     spotifyUrl: r.spotifyUrl,
     spotifyTitle: r.spotifyTitle,
     spotifyThumb: r.spotifyThumb,

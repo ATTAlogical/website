@@ -10,6 +10,7 @@ import DetailPanel from "./DetailPanel";
 import type { LogEntry } from "@/data/log";
 
 export type TemporalEntry = LogEntry & {
+  parentSlug?: string | null;
   spotifyUrl?: string | null;
   spotifyTitle?: string | null;
   spotifyThumb?: string | null;
@@ -58,8 +59,10 @@ export default function TemporalClient({
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
 
+  // Sidebar shows top-level CKORE entries with Spotify URLs (no child tracks —
+  // those live inside their parent album in ATTLAS and pop out on hover).
   const ckoreWithSpotify = entries.filter(
-    (e) => e.branch === "ckore" && e.spotifyUrl,
+    (e) => e.branch === "ckore" && e.spotifyUrl && !e.parentSlug,
   );
 
   const showSidebar = !isMobile && (ckoreWithSpotify.length > 0 || !!spotifyProfile);

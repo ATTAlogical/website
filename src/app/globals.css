@@ -1435,6 +1435,20 @@ body::after {
 .atlas-node--pulse-strong .atlas-node-dot { animation-name: atlas-pulse-strong; }
 .atlas-node--pulse-weak .atlas-node-dot   { animation-name: atlas-pulse-weak; }
 
+/* Child nodes (e.g. tracks under an album) — collapsed onto their parent until
+   the parent is hovered, then they spread outward and fade in.
+   Both the physics rest length and the visual scale are tied to the hover state. */
+.atlas-node--child {
+  transition: opacity 0.38s ease, transform 0.38s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.atlas-node--child.atlas-node--collapsed {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.4);
+}
+
 /* Mood-tinted glow ring — always visible on CKORE-with-mood nodes, brighter on hover.
    Drives the "reflection / aura" feel under each song. */
 .atlas-node--mood .atlas-node-glow {

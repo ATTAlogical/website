@@ -160,6 +160,61 @@ export async function fetchAudioFeatures(id: string): Promise<SpotifyAudioFeatur
   return authedFetch<SpotifyAudioFeatures>(`/audio-features/${encodeURIComponent(id)}`);
 }
 
+/** Fetch every track on an album (paginated). Uses /albums/{id}/tracks which
+ *  is more permissive on client-credentials than the batch /tracks?ids= form. */
+export async function fetchAlbumTracks(albumId: string): Promise<SpotifyTrack[]> {
+  type Page = {
+    items: Array<{
+      id: string;
+      name: string;
+      artists: SpotifyArtist[];
+      duration_ms: number;
+      preview_url: string | null;
+      external_urls: { spotify: string };
+    }>;
+    next: string | null;
+  };
+
+  // First, get the album so we have the images (the tracks endpoint omits them)
+  const album = await authedFetch<{
+    id: string;
+    name: string;
+    release_date: string;
+    images: SpotifyImage[];
+  }>(`/albums/${encodeURIComponent(albumId)}?` + new URLSearchParams({ market: "NL" }).toString());
+  if (!album) return [];
+
+  const collected: SpotifyTrack[] = [];
+  let nextPath: string | null = `/albums/${encodeURIComponent(albumId)}/tracks?` +
+    new URLSearchParams({ market: "NL" }).toString();
+  let safety = 0;
+  while (nextPath && safety < 20) {
+    safety += 1;
+    const page: Page | null = await authedFetch<Page>(nextPath);
+    if (!page) break;
+    for (const item of page.items) {
+      collected.push({
+        id: item.id,
+        name: item.name,
+        artists: item.artists,
+        album: {
+          id: album.id,
+          name: album.name,
+          release_date: album.release_date,
+          images: album.images,
+        },
+        duration_ms: item.duration_ms,
+        preview_url: item.preview_url,
+        external_urls: item.external_urls,
+        popularity: 0, // not provided by this endpoint
+        explicit: false,
+      });
+    }
+    nextPath = page.next ? page.next.replace(API_BASE, "") : null;
+  }
+  return collected;
+}
+
 export async function fetchArtist(id: string): Promise<SpotifyArtistDetail | null> {
   return authedFetch<SpotifyArtistDetail>(`/artists/${encodeURIComponent(id)}`);
 }
