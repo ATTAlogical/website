@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
+import UnlockScroll from "./UnlockScroll";
 
 export const metadata: Metadata = {
   title: "admin — ATTA logical",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-shell">
+      <UnlockScroll />
       <header className="admin-topbar">
         <Link href="/admin" className="admin-brand">ATTA logical · admin</Link>
         <nav className="admin-nav">
