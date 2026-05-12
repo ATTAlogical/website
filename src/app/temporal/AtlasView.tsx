@@ -84,14 +84,19 @@ function stepPhysics(
     n.vy = (n.vy + fy * STEP_DT) * DAMPING;
   }
 
-  // Pairwise repulsion — skip collapsed nodes entirely. Distance is clamped
-  // so very-close pairs (which can happen during expand transition) don't
-  // create explosive forces.
+  // Pairwise repulsion — skip collapsed nodes entirely. Skip parent-child
+  // pairs too (their relationship is already handled by parent-spring; otherwise
+  // children would push their own parent away when they expand). Distance is
+  // clamped so very-close pairs don't create explosive forces.
   const MIN_DIST_SQ = 100;
   for (let i = 0; i < nodes.length; i++) {
     if (isCollapsed[i]) continue;
     for (let j = i + 1; j < nodes.length; j++) {
       if (isCollapsed[j]) continue;
+      // Skip if one is the parent of the other
+      const slugI = nodes[i].slug;
+      const slugJ = nodes[j].slug;
+      if (parentMap.get(slugI) === slugJ || parentMap.get(slugJ) === slugI) continue;
       const a = nodes[i];
       const b = nodes[j];
       const dx = a.x - b.x;
