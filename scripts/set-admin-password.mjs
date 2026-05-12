@@ -35,11 +35,13 @@ function ensureAuthSecret(content) {
   return content + (content.endsWith("\n") ? "" : "\n") + `AUTH_SECRET='${secret}'\n`;
 }
 
-// IMPORTANT: bcrypt hashes contain `$` which Next.js's env loader treats as
-// variable interpolation in DOUBLE-quoted values. Use SINGLE quotes — they
-// are literal and never interpolated.
+// IMPORTANT: bcrypt hashes contain `$`. Next.js's env loader runs
+// dotenv-expand which interpolates `$VAR` references — even inside quotes,
+// depending on the dotenv-expand version. The bulletproof fix is to escape
+// every `$` as `\$`. dotenv-expand treats `\$` as a literal `$`.
 function setHashLine(content, hashValue) {
-  const line = `ADMIN_PASSWORD_HASH='${hashValue}'`;
+  const escaped = hashValue.replace(/\$/g, "\\$");
+  const line = `ADMIN_PASSWORD_HASH='${escaped}'`;
   if (/^ADMIN_PASSWORD_HASH\s*=/m.test(content)) {
     return content.replace(/^ADMIN_PASSWORD_HASH\s*=.*$/m, line);
   }

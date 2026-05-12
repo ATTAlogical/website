@@ -31,6 +31,8 @@ function loadEnv(file) {
     ) {
       value = value.slice(1, -1);
     }
+    // Unescape \$ → $  (matches Next.js's dotenv-expand behavior)
+    value = value.replace(/\\\$/g, "$");
     return value;
   }
   return null;
