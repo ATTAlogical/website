@@ -340,6 +340,10 @@ export default function AtlasView({
   /** Mirror of `hovered` accessible inside the rAF loop without re-binding. */
   const hoveredRef = useRef<string | null>(null);
   useEffect(() => { hoveredRef.current = hovered; }, [hovered]);
+  /** Mirror of `selected.slug` — keeps a clicked album's children expanded
+   *  even after the cursor moves away from it. */
+  const selectedRef = useRef<string | null>(null);
+  useEffect(() => { selectedRef.current = selected?.slug ?? null; }, [selected]);
 
   /** child slug → parent slug, for nodes with a parentSlug (e.g. tracks under albums). */
   const parentMap = useMemo(() => {
@@ -372,11 +376,12 @@ export default function AtlasView({
   }, [entries]);
 
   /** Same family-root logic as physics — keeps child + sibling tracks visible
-   *  when the user hovers any member of the same album family. */
+   *  when the user hovers OR has selected any member of the same album family. */
   const familyRoot = useMemo(() => {
-    if (!hovered) return null;
-    return parentMap.get(hovered) ?? hovered;
-  }, [hovered, parentMap]);
+    const active = hovered ?? selected?.slug ?? null;
+    if (!active) return null;
+    return parentMap.get(active) ?? active;
+  }, [hovered, selected, parentMap]);
   /** Which edges are parent→child (rendered with dashed style + collapse-aware visibility) */
   const parentEdgeKeys = useMemo(() => {
     const set = new Set<string>();
@@ -450,19 +455,19 @@ export default function AtlasView({
         : f + (target - f) * RAMP_PER_FRAME;
       factorRef.current = next;
 
-      // Ramp expansion factor. Only reset to 0 when the user moves between
-      // DIFFERENT families (different album groups). Moving from an album to
-      // one of its own children doesn't reset — they're the same family.
-      const currHover = hoveredRef.current;
-      const prevHover = prevHoveredRef.current;
-      const currFamily = currHover ? (parentMap.get(currHover) ?? currHover) : null;
-      const prevFamily = prevHover ? (parentMap.get(prevHover) ?? prevHover) : null;
+      // Active = hovered OR selected. Selected keeps the family expanded after
+      // a click — the detail panel is open, the user wants to see what they
+      // clicked plus its context.
+      const currActive = hoveredRef.current ?? selectedRef.current;
+      const prevActive = prevHoveredRef.current;
+      const currFamily = currActive ? (parentMap.get(currActive) ?? currActive) : null;
+      const prevFamily = prevActive ? (parentMap.get(prevActive) ?? prevActive) : null;
       if (currFamily !== prevFamily && currFamily && prevFamily) {
         expandFactorRef.current = 0;
       }
-      prevHoveredRef.current = currHover;
+      prevHoveredRef.current = currActive;
 
-      const expandTarget = currHover ? 1 : 0;
+      const expandTarget = currActive ? 1 : 0;
       const ef = expandFactorRef.current;
       const efNext = Math.abs(expandTarget - ef) < 0.005
         ? expandTarget
@@ -476,7 +481,7 @@ export default function AtlasView({
         t,
         next,
         parentMap,
-        hoveredRef.current,
+        currActive,
         efNext,
       );
       paintFrame(
