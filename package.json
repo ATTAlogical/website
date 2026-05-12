@@ -9,6 +9,7 @@
     "lint": "eslint",
     "auth:hash": "node scripts/hash-password.mjs",
     "auth:set": "node scripts/set-admin-password.mjs",
+    "auth:verify": "node scripts/verify-password.mjs",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed"
