@@ -177,12 +177,14 @@ export async function fetchArtistAllTracksDiag(artistId: string): Promise<Import
   const token = await getToken();
   if (!token) return { tracks: [], reason: "no-token" };
 
+  const albumsQs = new URLSearchParams({
+    include_groups: "album,single",
+    limit: "50",
+  }).toString();
   const albums = await authedFetch<{
     items: Array<{ id: string; album_group: string }>;
     next: string | null;
-  }>(
-    `/artists/${encodeURIComponent(artistId)}/albums?include_groups=album,single&limit=50`,
-  );
+  }>(`/artists/${encodeURIComponent(artistId)}/albums?${albumsQs}`);
   if (!albums) return { tracks: [], reason: "artist-not-found" };
   if (albums.items.length === 0) return { tracks: [], reason: "no-albums", albumCount: 0 };
 
