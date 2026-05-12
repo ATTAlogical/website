@@ -42,6 +42,10 @@ async function getToken(): Promise<string | null> {
   }
 }
 
+/** Last failure captured for diagnostics. Read by the import endpoint to
+ *  surface the actual HTTP status in error messages. */
+export let lastFetchError: { status: number; statusText: string; body: string; path: string } | null = null;
+
 async function authedFetch<T>(path: string): Promise<T | null> {
   const token = await getToken();
   if (!token) return null;
@@ -50,9 +54,29 @@ async function authedFetch<T>(path: string): Promise<T | null> {
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      let body = "";
+      try {
+        body = (await res.text()).slice(0, 200);
+      } catch { /* ignore */ }
+      lastFetchError = {
+        status: res.status,
+        statusText: res.statusText,
+        body,
+        path,
+      };
+      console.error(`[spotify] ${res.status} ${res.statusText} on ${path}:`, body);
+      return null;
+    }
+    lastFetchError = null;
     return (await res.json()) as T;
-  } catch {
+  } catch (e) {
+    lastFetchError = {
+      status: 0,
+      statusText: e instanceof Error ? e.message : "fetch failed",
+      body: "",
+      path,
+    };
     return null;
   }
 }

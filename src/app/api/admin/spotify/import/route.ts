@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchArtistAllTracksDiag, fetchAudioFeatures, extractArtistId } from "@/lib/spotifyApi";
+import {
+  fetchArtistAllTracksDiag,
+  fetchAudioFeatures,
+  extractArtistId,
+  lastFetchError,
+} from "@/lib/spotifyApi";
 
 function slugify(input: string): string {
   return input
@@ -51,15 +56,20 @@ export async function POST(req: NextRequest) {
 
   const { tracks, reason, albumCount } = await fetchArtistAllTracksDiag(artistId);
   if (tracks.length === 0) {
+    // Capture the actual HTTP status from the last failed Spotify call.
+    const err = lastFetchError;
+    const statusDetail = err
+      ? ` Spotify returned ${err.status} ${err.statusText} on ${err.path}${err.body ? ` — body: ${err.body}` : ""}.`
+      : "";
     const reasonText = reason === "no-token"
       ? "Spotify credentials are missing or invalid (SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET)."
       : reason === "artist-not-found"
-      ? `Artist ID "${artistId}" returned 404 from Spotify. Make sure you pasted only the alphanumeric ID — the part after /artist/ in the URL.`
+      ? `Artist API call failed for ID "${artistId}".${statusDetail}`
       : reason === "no-albums"
-      ? `Artist exists but has zero albums/singles on Spotify yet.`
+      ? `Artist exists but has zero albums/singles on Spotify yet.${statusDetail}`
       : reason === "no-tracks-in-albums"
-      ? `Artist has ${albumCount ?? "some"} albums but no tracks inside them. This is unusual — try a different artist.`
-      : "Spotify returned no tracks. Unknown cause.";
+      ? `Artist has ${albumCount ?? "some"} albums but no tracks inside them.${statusDetail}`
+      : `Spotify returned no tracks.${statusDetail}`;
     return NextResponse.json(
       { error: reasonText, artistId, reason },
       { status: 502 },
