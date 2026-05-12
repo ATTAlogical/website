@@ -172,16 +172,23 @@ function stepPhysics(
     }
   }
 
-  // Integrate. Collapsed children get snapped to parent (no momentum).
-  // Active nodes integrate normally.
+  // Integrate. Collapsed children snap to parent + a deterministic tiny radial
+  // offset so when they become active the spring has a real direction to push
+  // them outward. The offset is too small to be visually noticeable through
+  // the parent's larger dot but big enough to seed the physics.
   for (let i = 0; i < nodes.length; i++) {
     if (isCollapsed[i]) {
       const parentSlug = parentMap.get(nodes[i].slug);
       if (parentSlug) {
         const pi = byIndex.get(parentSlug);
         if (pi !== undefined) {
-          nodes[i].x = nodes[pi].x;
-          nodes[i].y = nodes[pi].y;
+          const slug = nodes[i].slug;
+          // Deterministic angle from slug — same child always rests at same angle
+          let h = 0;
+          for (let k = 0; k < slug.length; k++) h = (h * 31 + slug.charCodeAt(k)) | 0;
+          const angle = ((Math.abs(h) % 1000) / 1000) * Math.PI * 2;
+          nodes[i].x = nodes[pi].x + Math.cos(angle) * 3;
+          nodes[i].y = nodes[pi].y + Math.sin(angle) * 3;
           nodes[i].vx = 0;
           nodes[i].vy = 0;
         }
