@@ -379,10 +379,20 @@ export type SpotifyMetaFull = {
   danceability: number | null;
 };
 
-/** Fetches everything in one shot for a Spotify URL. Supports track URLs and artist URLs.
- * Returns null on any failure. */
+export function extractAlbumId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const match = u.pathname.match(/\/album\/([A-Za-z0-9]+)/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetches everything in one shot for a Spotify URL. Supports track / album /
+ *  artist URLs. Returns null on any failure. */
 export async function fetchSpotifyMetaFull(url: string): Promise<SpotifyMetaFull | null> {
-  // First try as a track URL
+  // Track URL → full track + audio features
   const trackId = extractTrackId(url);
   if (trackId) {
     const [track, features] = await Promise.all([
@@ -410,7 +420,39 @@ export async function fetchSpotifyMetaFull(url: string): Promise<SpotifyMetaFull
     };
   }
 
-  // Otherwise try as an artist URL (for profile-type entries like the CKORE hub)
+  // Album URL → album metadata (no audio features at album level)
+  const albumId = extractAlbumId(url);
+  if (albumId) {
+    const album = await authedFetch<{
+      id: string;
+      name: string;
+      release_date: string;
+      images: SpotifyImage[];
+      artists: SpotifyArtist[];
+    }>(`/albums/${encodeURIComponent(albumId)}?` + new URLSearchParams({ market: "NL" }).toString());
+    if (!album) return null;
+    const thumb = album.images.reduce<SpotifyImage | null>((best, img) => {
+      if (!best) return img;
+      return img.width > best.width ? best : img;
+    }, null);
+    const artistNames = album.artists.map((a) => a.name).join(", ");
+    return {
+      title: `${album.name} — ${artistNames}`,
+      thumbnail: thumb?.url ?? null,
+      durationMs: 0,
+      releaseDate: album.release_date,
+      artist: artistNames,
+      album: album.name,
+      previewUrl: null,
+      popularity: 0,
+      tempo: null,
+      energy: null,
+      valence: null,
+      danceability: null,
+    };
+  }
+
+  // Artist URL → profile data (for profile-type entries like the CKORE hub)
   const artistId = extractArtistId(url);
   if (artistId) {
     const artist = await fetchArtist(artistId);

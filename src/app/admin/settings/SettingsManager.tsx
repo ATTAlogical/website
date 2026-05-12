@@ -16,6 +16,8 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
   const [importResult, setImportResult] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState<string | null>(null);
+  const [wiping, setWiping] = useState(false);
+  const [wipeResult, setWipeResult] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
@@ -95,6 +97,27 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
     setRefreshing(false);
   };
 
+  const handleWipe = async () => {
+    if (wiping) return;
+    if (!confirm("Delete ALL CKORE entries that came from Spotify (albums + tracks)? This cannot be undone. Manual CKORE notes without a Spotify URL are kept.")) return;
+    setWiping(true);
+    setWipeResult(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/spotify/wipe", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Wipe failed");
+        setWiping(false);
+        return;
+      }
+      setWipeResult(`Deleted ${data.deleted} CKORE entr${data.deleted === 1 ? "y" : "ies"}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    }
+    setWiping(false);
+  };
+
   return (
     <section className="admin-settings">
       <h1 className="admin-h1">Settings</h1>
@@ -103,6 +126,7 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
       {error && <div className="admin-error" role="alert">{error}</div>}
       {importResult && <div className="admin-info">{importResult}</div>}
       {refreshResult && <div className="admin-info">{refreshResult}</div>}
+      {wipeResult && <div className="admin-info">{wipeResult}</div>}
 
       <form className="admin-form" onSubmit={handleSave}>
         <h2 className="admin-form-title">Spotify</h2>
@@ -177,13 +201,28 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
         <h2 className="admin-form-title">Refresh all CKORE metadata</h2>
         <p className="admin-hint" style={{ marginBottom: 16 }}>
           Re-fetches Spotify metadata (duration, release date, BPM, energy, valence,
-          preview URL, album art) for every existing CKORE entry. Run this once after
-          turning on Spotify credentials to fill in entries created earlier.
+          preview URL, album art) for every existing CKORE entry. Works on album URLs,
+          track URLs, and artist URLs.
         </p>
 
         <div className="admin-form-actions">
           <button type="submit" className="admin-btn" disabled={refreshing}>
             {refreshing ? "refreshing…" : "refresh metadata"}
+          </button>
+        </div>
+      </form>
+
+      <form className="admin-form" onSubmit={(e) => { e.preventDefault(); handleWipe(); }}>
+        <h2 className="admin-form-title">Wipe all CKORE imports</h2>
+        <p className="admin-hint" style={{ marginBottom: 16 }}>
+          Deletes every CKORE entry that has a Spotify URL (albums and tracks). Manual
+          CKORE notes without a Spotify URL are untouched. Use this to clean up duplicates
+          before re-running import.
+        </p>
+
+        <div className="admin-form-actions">
+          <button type="submit" className="admin-btn admin-btn-danger" disabled={wiping}>
+            {wiping ? "wiping…" : "wipe imported CKORE entries"}
           </button>
         </div>
       </form>
