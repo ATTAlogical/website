@@ -2275,7 +2275,8 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   transition: color 0.15s;
 }
 .music-sidebar-profile:hover { color: oklch(10% 0.005 255); }
-/* Music row — track in the sidebar. Renders as a button now (was anchor). */
+/* Music row — minimal album entry. No hover audio, no BPM pulse, no mood glow.
+   Just cover + title + release date, click to open the detail panel. */
 .music-row {
   position: relative;
   display: grid;
@@ -2286,7 +2287,6 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   color: inherit;
   padding: 6px 6px 14px; /* extra bottom for reflection space */
   border-radius: 4px;
-  transition: background 0.18s ease;
   isolation: isolate;
   /* Button reset */
   background: none;
@@ -2295,54 +2295,6 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   text-align: left;
   cursor: pointer;
   width: 100%;
-}
-.music-row:hover { background: oklch(96% 0.006 255); }
-
-/* Now-playing indicator — three short bars over the cover bottom-left */
-.music-row-playing-indicator {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  display: flex;
-  align-items: flex-end;
-  gap: 1.5px;
-  padding: 2px 3px;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 2px;
-  height: 10px;
-  z-index: 2;
-}
-.music-row-playing-indicator span {
-  display: block;
-  width: 1.5px;
-  background: oklch(98% 0.005 145);
-  border-radius: 0.5px;
-  animation: music-bar 0.9s ease-in-out infinite;
-}
-.music-row-playing-indicator span:nth-child(1) { height: 5px; animation-delay: 0s; }
-.music-row-playing-indicator span:nth-child(2) { height: 7px; animation-delay: 0.18s; }
-.music-row-playing-indicator span:nth-child(3) { height: 4px; animation-delay: 0.36s; }
-@keyframes music-bar {
-  0%, 100% { transform: scaleY(0.4); }
-  50%      { transform: scaleY(1); }
-}
-.music-row--playing { background: oklch(95% 0.006 255); }
-
-/* Mood-tinted glow halo — sits behind the row. Color comes from --mood-color
-   set inline per track based on Spotify valence/energy. */
-.music-row-glow {
-  position: absolute;
-  inset: -2px -6px 4px -6px;
-  background: var(--mood-color, transparent);
-  filter: blur(14px);
-  opacity: 0;
-  border-radius: 14px;
-  z-index: -1;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-}
-.music-row:hover .music-row-glow {
-  opacity: 0.18;
 }
 
 /* Cover wrap holds the image and its reflection. */
@@ -2412,39 +2364,9 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
 .music-row-sep { opacity: 0.45; }
 .music-row-stat { letter-spacing: 0.02em; }
 
-/* BPM-driven pulse: tempo applied as CSS variable. Amplitude varies with hover state. */
-@keyframes music-row-pulse-normal {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.012); }
-}
-@keyframes music-row-pulse-strong {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.04); }
-}
-@keyframes music-row-pulse-weak {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.004); }
-}
-.music-row--has-bpm .music-row-cover {
-  animation-duration: var(--bpm-duration, 0ms);
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-  will-change: transform;
-}
-.music-row--has-bpm.music-row--pulse-normal .music-row-cover {
-  animation-name: music-row-pulse-normal;
-}
-.music-row--has-bpm.music-row--pulse-strong .music-row-cover {
-  animation-name: music-row-pulse-strong;
-}
-.music-row--has-bpm.music-row--pulse-weak .music-row-cover {
-  animation-name: music-row-pulse-weak;
-}
-
-/* Reduced motion — kill the pulse */
-@media (prefers-reduced-motion: reduce) {
-  .music-row--has-bpm .music-row-cover { animation: none; }
-}
+/* Music sidebar rows are intentionally quiet — no BPM pulse, no audio preview,
+   no mood glow. The lively visuals (pulse, glow, audio) live on ATTLAS nodes
+   where they don't compete with the album list. */
 
 /* Admin info banner (used by settings page for import results) */
 .admin-info {
