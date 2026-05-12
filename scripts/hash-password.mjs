@@ -29,8 +29,12 @@ const hash = await bcrypt.hash(password, 12);
 const secret = randomBytes(48).toString("hex");
 
 console.log();
-console.log("# Paste into .env.local and Vercel project env vars:");
-console.log(`ADMIN_PASSWORD_HASH="${hash}"`);
-console.log(`AUTH_SECRET="${secret}"`);
+console.log("# .env (use SINGLE quotes — bcrypt hashes contain $ which would interpolate)");
+console.log(`ADMIN_PASSWORD_HASH='${hash}'`);
+console.log(`AUTH_SECRET='${secret}'`);
+console.log();
+console.log("# Vercel env vars (paste the values WITHOUT quotes — Vercel stores them as literals)");
+console.log(`ADMIN_PASSWORD_HASH = ${hash}`);
+console.log(`AUTH_SECRET = ${secret}`);
 console.log();
 console.log("(The plain password is not stored anywhere. Memorise it.)");

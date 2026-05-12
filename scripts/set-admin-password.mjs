@@ -32,11 +32,14 @@ const hash = await bcrypt.hash(password, 12);
 function ensureAuthSecret(content) {
   if (/^AUTH_SECRET\s*=/m.test(content)) return content;
   const secret = randomBytes(48).toString("hex");
-  return content + (content.endsWith("\n") ? "" : "\n") + `AUTH_SECRET="${secret}"\n`;
+  return content + (content.endsWith("\n") ? "" : "\n") + `AUTH_SECRET='${secret}'\n`;
 }
 
+// IMPORTANT: bcrypt hashes contain `$` which Next.js's env loader treats as
+// variable interpolation in DOUBLE-quoted values. Use SINGLE quotes — they
+// are literal and never interpolated.
 function setHashLine(content, hashValue) {
-  const line = `ADMIN_PASSWORD_HASH="${hashValue}"`;
+  const line = `ADMIN_PASSWORD_HASH='${hashValue}'`;
   if (/^ADMIN_PASSWORD_HASH\s*=/m.test(content)) {
     return content.replace(/^ADMIN_PASSWORD_HASH\s*=.*$/m, line);
   }
