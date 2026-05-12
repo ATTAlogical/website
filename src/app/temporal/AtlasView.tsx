@@ -43,6 +43,9 @@ function stepPhysics(
   parentMap: Map<string, string> = new Map(),
   /** Slug of currently-expanded parent (children spread outward); null = all collapsed. */
   expandedParent: string | null = null,
+  /** 0..1 ramp for how spread-out the expanded parent's children should be.
+   *  Multiplies the parent-spring rest length so expansion is smooth. */
+  expandFactor: number = 0,
 ) {
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
@@ -128,12 +131,14 @@ function stepPhysics(
     b.vy -= ny * f * STEP_DT;
   }
 
-  // Parent-spring: only for ACTIVE (currently-expanded) children. Pulls them
-  // outward to rest=80 around their parent. Collapsed children are snapped
-  // to parent's position in the integration step below — they don't need
-  // physics.
-  const PARENT_SPRING_K = 0.06;
-  const EXPANDED_REST = 80;
+  // Parent-spring: only for ACTIVE (currently-expanded) children. The rest
+  // length is ramped 0 → EXPANDED_REST over ~0.6s so children spread outward
+  // gradually instead of shooting on instant hover. K is small so the spring
+  // is gentle even at full rest.
+  const PARENT_SPRING_K = 0.018;
+  const EXPANDED_REST = 70;
+  const MAX_CHILD_SPEED = 4; // px/frame cap so they can't shoot too fast
+  const restNow = EXPANDED_REST * expandFactor;
   for (const [childSlug, parentSlug] of parentMap.entries()) {
     const ci = byIndex.get(childSlug);
     if (ci === undefined || isCollapsed[ci]) continue;
@@ -144,12 +149,19 @@ function stepPhysics(
     const dx = parent.x - child.x;
     const dy = parent.y - child.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-    const stretch = dist - EXPANDED_REST;
+    const stretch = dist - restNow;
     const f = stretch * PARENT_SPRING_K;
     const nx = dx / dist;
     const ny = dy / dist;
     child.vx += nx * f;
     child.vy += ny * f;
+    // Hard-cap velocity so even a freshly-released child can't shoot
+    const speed = Math.sqrt(child.vx * child.vx + child.vy * child.vy);
+    if (speed > MAX_CHILD_SPEED) {
+      const k = MAX_CHILD_SPEED / speed;
+      child.vx *= k;
+      child.vy *= k;
+    }
   }
 
   // Integrate. Collapsed children get snapped to parent (no momentum).
@@ -272,6 +284,10 @@ export default function AtlasView({
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Smooth pause factor 0..1. Lerps toward target each frame so the freeze isn't abrupt. */
   const factorRef = useRef<number>(1);
+  /** Smooth expand factor 0..1. When a parent is hovered, ramps toward 1.
+   *  Otherwise ramps toward 0. Multiplies parent-spring rest length so children
+   *  spread outward gradually instead of shooting out on instant hover. */
+  const expandFactorRef = useRef<number>(0);
 
   const beginHoverPause = () => {
     if (resumeTimerRef.current) {
@@ -346,10 +362,10 @@ export default function AtlasView({
     });
 
     // Pre-settle the layout with hidden iterations so the initial paint looks composed.
-    // Initial settle has all children collapsed (no expanded parent), so tracks
-    // sit on top of their parent album.
+    // Initial settle has all children collapsed (no expanded parent, expandFactor=0),
+    // so tracks sit on top of their parent album.
     for (let k = 0; k < 400; k++) {
-      stepPhysics(physicsRef.current, edges, branchMap, k, 1, parentMap, null);
+      stepPhysics(physicsRef.current, edges, branchMap, k, 1, parentMap, null, 0);
     }
     paintFrame(physicsRef.current, edges, 240, {
       nodes: nodeRefs.current,
@@ -364,6 +380,7 @@ export default function AtlasView({
     if (reducedMotion.current) return;
     let t = 240;
     const RAMP_PER_FRAME = 0.06; // ~0.5s to reach target
+    const EXPAND_RAMP_PER_FRAME = 0.045; // ~0.6s — slower so expansion feels gentle
     const tick = () => {
       const target = pausedRef.current ? 0 : 1;
       const f = factorRef.current;
@@ -371,6 +388,16 @@ export default function AtlasView({
         ? target
         : f + (target - f) * RAMP_PER_FRAME;
       factorRef.current = next;
+
+      // Ramp expansion factor: 1 when a parent with children is hovered, 0 otherwise.
+      // We don't know which slugs have children here, but the spring force has zero
+      // effect on parentless nodes anyway — the factor just gates the rest length.
+      const expandTarget = hoveredRef.current ? 1 : 0;
+      const ef = expandFactorRef.current;
+      const efNext = Math.abs(expandTarget - ef) < 0.005
+        ? expandTarget
+        : ef + (expandTarget - ef) * EXPAND_RAMP_PER_FRAME;
+      expandFactorRef.current = efNext;
 
       stepPhysics(
         physicsRef.current,
@@ -380,6 +407,7 @@ export default function AtlasView({
         next,
         parentMap,
         hoveredRef.current,
+        efNext,
       );
       paintFrame(
         physicsRef.current,
