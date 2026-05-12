@@ -206,17 +206,19 @@ export async function fetchArtistAllTracksDiag(artistId: string): Promise<Import
   if (albums.items.length === 0) return { tracks: [], reason: "no-albums", albumCount: 0 };
 
   const albumIds = albums.items.map((a) => a.id);
+
+  // Fetch each album's tracks individually. Spotify's batch /albums?ids=...
+  // endpoint returns 403 for client-credentials calls in some markets;
+  // /albums/{id}/tracks is more reliable.
   const trackIds: string[] = [];
-  for (let i = 0; i < albumIds.length; i += 20) {
-    const batch = albumIds.slice(i, i + 20);
+  for (const albumId of albumIds) {
     const result = await authedFetch<{
-      albums: Array<{ tracks: { items: Array<{ id: string }> } }>;
-    }>(`/albums?ids=${batch.join(",")}`);
+      items: Array<{ id: string }>;
+    }>(`/albums/${encodeURIComponent(albumId)}/tracks?` +
+       new URLSearchParams({ market: "NL" }).toString());
     if (!result) continue;
-    for (const album of result.albums) {
-      for (const item of album.tracks.items) {
-        trackIds.push(item.id);
-      }
+    for (const item of result.items) {
+      trackIds.push(item.id);
     }
   }
 
@@ -225,15 +227,14 @@ export async function fetchArtistAllTracksDiag(artistId: string): Promise<Import
     return { tracks: [], reason: "no-tracks-in-albums", albumCount: albums.items.length };
   }
 
+  // Fetch full track details (with audio features) one at a time too, for
+  // consistency with the per-album approach above.
   const tracks: SpotifyTrack[] = [];
-  for (let i = 0; i < uniqueIds.length; i += 50) {
-    const batch = uniqueIds.slice(i, i + 50);
-    const result = await authedFetch<{ tracks: SpotifyTrack[] }>(
-      `/tracks?ids=${batch.join(",")}`,
+  for (const tid of uniqueIds) {
+    const t = await authedFetch<SpotifyTrack>(
+      `/tracks/${encodeURIComponent(tid)}?` + new URLSearchParams({ market: "NL" }).toString(),
     );
-    if (result?.tracks) {
-      for (const t of result.tracks) if (t) tracks.push(t);
-    }
+    if (t) tracks.push(t);
   }
   return { tracks, albumCount: albums.items.length };
 }
