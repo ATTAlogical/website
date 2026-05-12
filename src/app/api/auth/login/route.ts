@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { signSession, AUTH_COOKIE, AUTH_MAX_AGE } from "@/lib/auth";
+import { verifyPassword, signSession, AUTH_COOKIE, AUTH_MAX_AGE } from "@/lib/auth";
 
 // Rate limit — per-instance, in-memory. Good enough for serverless cold containers.
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -37,25 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  // DEBUG — remove once login works
-  const envHash = process.env.ADMIN_PASSWORD_HASH;
-  console.log("[auth/login] env hash present:", !!envHash);
-  console.log("[auth/login] env hash prefix :", envHash ? envHash.slice(0, 24) : "(missing)");
-  console.log("[auth/login] env hash length :", envHash?.length ?? 0);
-  console.log("[auth/login] password length :", password.length);
-
-  if (!envHash) {
-    return NextResponse.json({ error: "Wrong password" }, { status: 401 });
-  }
-
-  let ok = false;
-  try {
-    ok = await bcrypt.compare(password, envHash);
-  } catch (e) {
-    console.error("[auth/login] bcrypt threw:", e);
-  }
-  console.log("[auth/login] bcrypt result   :", ok);
-
+  const ok = await verifyPassword(password);
   if (!ok) {
     return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
