@@ -258,8 +258,32 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
   const physicsRef = useRef<PhysicsNode[]>([]);
   const rafRef = useRef<number>(0);
   const reducedMotion = useRef<boolean>(false);
-  /** Paused while the cursor is over the stage — the field holds still so you can read it. */
+  /** Paused while the cursor is over a node — the field holds still so you can read it. */
   const pausedRef = useRef<boolean>(false);
+  /** Counter so transitioning between adjacent nodes doesn't briefly resume. */
+  const hoverCountRef = useRef<number>(0);
+  /** Small delay before resume so mouseLeave → mouseEnter on adjacent node stays paused. */
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const beginHoverPause = () => {
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+    hoverCountRef.current += 1;
+    pausedRef.current = true;
+  };
+
+  const endHoverPause = () => {
+    hoverCountRef.current = Math.max(0, hoverCountRef.current - 1);
+    if (hoverCountRef.current === 0) {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = setTimeout(() => {
+        if (hoverCountRef.current === 0) pausedRef.current = false;
+        resumeTimerRef.current = null;
+      }, 80);
+    }
+  };
 
   const [selected, setSelected] = useState<LogEntry | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -329,15 +353,16 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
     };
     rafRef.current = requestAnimationFrame(tick);
 
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    };
   }, [entries, edges, branchMap]);
 
   return (
     <div
       className="atlas-stage"
       ref={stageRef}
-      onMouseEnter={() => { pausedRef.current = true; }}
-      onMouseLeave={() => { pausedRef.current = false; }}
     >
       {/* Hint copy */}
       <div className="atlas-hint">
@@ -405,10 +430,10 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
                 tabIndex={0}
                 role="button"
                 aria-label={`${entry.title}, ${entry.date}`}
-                onMouseEnter={() => setHovered(entry.slug)}
-                onMouseLeave={() => setHovered(null)}
-                onFocus={() => setHovered(entry.slug)}
-                onBlur={() => setHovered(null)}
+                onMouseEnter={() => { setHovered(entry.slug); beginHoverPause(); }}
+                onMouseLeave={() => { setHovered(null); endHoverPause(); }}
+                onFocus={() => { setHovered(entry.slug); beginHoverPause(); }}
+                onBlur={() => { setHovered(null); endHoverPause(); }}
                 onClick={() => setSelected(entry)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(entry); } }}
               >

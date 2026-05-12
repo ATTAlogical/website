@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import type { LogEntry } from "@/data/log";
 import TemporalClient from "./TemporalClient";
 import LiveTimestamp from "./LiveTimestamp";
+import MastheadTitle from "./MastheadTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -35,16 +36,11 @@ export default async function TemporalPage() {
         <Link href="/" className="log-masthead-back" aria-label="Back to ATTA logical">
           ← ATTA logical
         </Link>
-        <TemporalMastheadTitle />
+        <MastheadTitle />
         <LiveTimestamp />
       </header>
 
       <TemporalClient entries={entries} />
     </main>
   );
-}
-
-// Tiny client wrapper just for the conditional masthead title (the page itself stays server)
-function TemporalMastheadTitle() {
-  return <span className="log-masthead-title" aria-hidden>the log</span>;
 }

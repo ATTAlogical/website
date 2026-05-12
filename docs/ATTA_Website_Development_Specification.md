@@ -1,6 +1,6 @@
 # ATTA Website Development Specification
-**Project Management Document**  
-*Version 2.0 — April 2026*
+**Project Management Document**
+*Version 2.5 — May 2026*
 
 ---
 
@@ -59,7 +59,15 @@ ATTA (Parent Brand)
 - **Styling**: Tailwind CSS + Custom CSS (`globals.css`) for advanced effects
 - **Typography**: Playfair Display (Google Fonts) via `next/font/google`
 - **Hosting**: Vercel
-- **Data**: `src/data/projects.ts` — shared type + data file, no "use client", works in both Server and Client Components
+- **Database**: Neon Postgres (serverless) accessed via Prisma ORM. Schema in `prisma/schema.prisma`; client singleton in `src/lib/db.ts`.
+- **Auth (admin)**: bcryptjs for password hashing + jose for HS256 JWT cookies. Single-user. See §3.10.
+- **Payments**: Stripe Checkout (hosted). Server-authoritative pricing — never trusts the client. See §3.9.
+- **Email**: Resend (transactional). Contact form + order confirmations.
+- **AI**: Groq (`llama-3.1-8b-instant`) for chip resolution + open.spotify.com/oembed for music metadata.
+- **Data**:
+  - `src/data/projects.ts` — shared type + data file, no "use client", works in both Server and Client Components.
+  - `src/data/log.ts` — seed data for `LogEntry` rows. After first `db:seed`, Neon is the source of truth.
+  - `src/data/store.ts` — `STORE_PRODUCTS` and product types (still file-backed; admin pages for store land in Phase 5).
 
 ### 3.2 Temporal Evolution Engine
 
@@ -277,6 +285,154 @@ Confirmation failure only logs; the request still returns `{ ok: true }` so the 
 
 The same form is present on `/subscriptions` — the selected tier is prepended to the message body before sending.
 
+### 3.9 Laugical Store + Stripe Checkout
+
+Route: `/laugical/store` — full storefront for designed objects.
+
+**Product types** (3, with distinct visual densities in the listing):
+| Type | Visual treatment | Fulfilment |
+|---|---|---|
+| `one-of-one` | Singular treatment, full presence, version record | One item only, qty forced to 1 |
+| `made-to-order` | Medium presence, horizontal layout, fulfilment indicator | "ready" / "a few days" / "~a week" badges |
+| `dropship` | Compact grid, scannable (stickers, prints) | In-stock quantity |
+
+**Availability states**: `in-stock` · `made-to-order` · `sold` · `coming-soon`. Only the first two are buyable.
+
+**Cart** (`src/context/LaugicalCart.tsx`):
+- Persists to `localStorage` under `laugical-cart`.
+- `MusicState` (`browse` / `accumulating` / `checkout` / `confirmed`) drives ambient audio cues. Auto-set from item count; explicit override on checkout + confirmation.
+- Mounted via `LaugicalCartProvider` in `src/app/laugical/layout.tsx`. Available across all `/laugical/*` routes.
+
+**Cart drawer** (`src/app/laugical/CartDrawer.tsx`):
+- **Desktop**: slide-in from the right, 420px width.
+- **Mobile**: bottom sheet with drag-handle, drag-to-dismiss (offset > 100px or velocity > 500). Decided by `useIsMobile()`.
+- Quantity stepper per line (`−` decrements; at 0 removes), per-line remove link, subtotal, shipping note, checkout button.
+- Locks body scroll, traps focus, closes on Escape.
+
+**Checkout** (`src/app/api/checkout/route.ts`):
+- Creates a Stripe Checkout Session.
+- **Server-authoritative pricing**: looks up each line item by slug in `STORE_PRODUCTS`, never trusts client `price`. Rejects items not in `in-stock` / `made-to-order`. Forces `quantity: 1` on `one-of-one`.
+- Stripe API version pinned: `2026-04-22.dahlia`.
+- Shipping rates: €5.95 Netherlands, €12.95 international (18 EU/EEA + UK + US countries).
+- Returns `{ url }`. Client redirects the browser to Stripe-hosted checkout.
+- Rate-limited 8/min/IP.
+
+**Success page**: `/laugical/store/success?session_id={CHECKOUT_SESSION_ID}` — clears cart, sets music state to `confirmed`.
+
+**Cancel banner**: `?checkout=cancelled` on the store page renders a top banner ("checkout cancelled — your bag is still here"), then strips the query param from the URL via `history.replaceState`.
+
+### 3.10 Admin / CMS (Phase 1)
+
+A hidden, single-user admin lets Boelie edit log entries from the live site without redeploying.
+
+**Hidden entrance** (homepage only):
+1. Type `login` or `admin` in the homepage search bar and press Enter.
+2. No chip surfaces. A flag `loginUnlocked` flips true.
+3. The "ATTA" portion of the title becomes clickable (`cursor: pointer`, subtle hover halo).
+4. Click → password modal (`src/app/LoginModal.tsx`).
+5. POST `/api/auth/login` with the password. Bcrypt-compared against `ADMIN_PASSWORD_HASH`. Rate-limited 5 attempts / 5 minutes / IP.
+6. On success: HS256-signed JWT in an HttpOnly `atta_auth` cookie (Secure in prod, SameSite=Lax, 7-day TTL). Redirects to `/admin`.
+
+**Middleware** (`middleware.ts`): gates `/admin/*` and `/api/admin/*`. Pages without the cookie redirect to `/`; API returns 401 JSON.
+
+**Admin routes**:
+- `/admin` — overview with counts ("Log: N · Projects · Store" — last two are ghosted "phase 2 / phase 5").
+- `/admin/log` — full CRUD table over `LogEntry`. Inline form with:
+  - Date picker
+  - **Brand selector** — fixed "ATTA" prefix + dropdown of `logical` / `Laugical` / `CKORE`
+  - Type dropdown (`build` / `project` / `track` / `drop` / `note` / `milestone`)
+  - Title, body (≤2000 chars), href, external checkbox
+  - **CKORE-only**: Spotify URL field
+  - Lineage chip-select (multi-select of other entry slugs — drives ATTLAS connections)
+
+**Spotify integration** (CKORE entries with a `spotifyUrl`):
+- On save, `/api/admin/log` server-fetches `https://open.spotify.com/oembed?url=...` and caches `title` + `thumbnail_url` (album art) on the row.
+- Public, no auth required. Falls back to null silently if the URL isn't a valid Spotify URL.
+- Surfaces on `/temporal` (see §3.11).
+
+**Schema** (`prisma/schema.prisma`):
+```prisma
+model LogEntry {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  date          DateTime @db.Date
+  branch        String   // "atta" | "laugical" | "ckore"
+  type          String   // build | project | track | drop | note | milestone
+  title         String
+  body          String?
+  href          String?
+  external      Boolean  @default(false)
+  links         String[] // slugs this entry grows out of (Postgres array)
+  spotifyUrl    String?
+  spotifyTitle  String?
+  spotifyThumb  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([branch])
+  @@index([date])
+}
+```
+
+**One-time setup tooling** (in `scripts/`):
+- `npm run auth:set 'password'` — bcrypts + writes `ADMIN_PASSWORD_HASH` and a random `AUTH_SECRET` into `.env` and `.env.local` directly. Bulletproof against shell-quoting issues.
+- `npm run auth:verify 'password'` — diagnostic. Reads the hash from `.env`, bcrypt-compares locally. Confirms hash integrity without involving the server.
+- `npm run auth:hash 'password'` — prints both env-file format (single quotes, `\$`-escaped) and Vercel format (raw).
+- `npm run db:push` — applies Prisma schema to Neon.
+- `npm run db:seed` — idempotent upsert from `LOG_ENTRIES`.
+
+**Dotenv `$` gotcha** (lesson learned): bcrypt hashes contain `$2b$12$...`. Next.js's `@next/env` runs `dotenv-expand`, which interpolates `$VAR` references **even inside single-quoted values**. A literal hash gets mangled (length 60 → ~44, prefix mismatched). Fix: write every `$` as `\$` in the `.env` file. `dotenv-expand` resolves `\$` to a literal `$`. The `auth:set` script does this automatically. Vercel stores env vars as raw strings (no interpolation), so paste hashes there unescaped.
+
+### 3.11 Temporal Log — ATTLAS (desktop) + Card Deck (mobile)
+
+Route: `/temporal` — a chronological + relational record of every entry in the ATTA universe.
+
+**Server component**: `src/app/temporal/page.tsx` fetches all `LogEntry` rows from Prisma, serialises dates to YYYY-MM-DD strings, and passes them to a client component (`TemporalClient`) which chooses the right view per device.
+
+**Floating masthead** (both views): three elements (`← ATTA logical`, "ATTLAS" / "the log" title, live timestamp) positioned `absolute` over the stage. Transparent, no border — does not consume layout space, so cursor moving down from the top hits a node directly.
+
+**Desktop — ATTLAS** (`src/app/temporal/AtlasView.tsx`):
+A force-directed organic graph rendered in SVG. Pure physics, no third-party graph lib.
+
+- **Nodes**: one per `LogEntry`. Per-branch color (atta = slate, laug = warm ochre, ckore = cool blue) and per-type size weighting (milestones largest, notes smallest).
+- **Edges**: one quadratic Bezier per `LogEntry.links[]` entry. Control point is mid-segment, perpendicular-offset by a slow sine wave so the curve breathes organically.
+- **Physics** (custom in-file simulation, ~12 nodes so O(n²) is free):
+  - Pairwise repulsion (REPULSION_K = 5200)
+  - Spring attraction along edges (SPRING_K = 0.006, rest 150px). Same-branch edges pull 1.35× tighter so branches self-cluster.
+  - Soft centering pull toward origin
+  - Quadratic soft walls beyond ±480 × ±280 so nothing escapes the viewBox
+  - Damping 0.88
+  - Ambient drift: two-frequency sine field per node (independent seeds) so movement looks biological, never periodic.
+- **Pre-settle**: 400 iterations run synchronously on mount before first paint, so the initial frame looks composed (not "exploded into place").
+- **Render path**: direct DOM mutation via refs (`<g>` `transform` and `<path>` `d`), bypassing React re-renders. The rAF loop never goes through React state.
+- **Hover-to-pause**: pointer over any node halts the physics + Bezier wobble. Implemented per-node (not stage-level) with a hover counter and 80ms resume timer so cursor transitions between adjacent nodes don't briefly resume. Pause is total — physics step is skipped and `t` does not advance, so the field resumes exactly where it left off.
+- **Connection highlight**: hovering a node fades unconnected edges/nodes and brightens the neighborhood (the hovered slug and its `links` targets).
+- **Detail panel**: click a node → side panel slides in from the right. Date, branch tag, title, body, CKORE Spotify embed (cover + title), optional `visit` link.
+
+**Mobile — Card Deck** (`src/app/temporal/CardDeckView.tsx`):
+A horizontal scroll-snap stack of month cards. Each card is one month; entries listed vertically inside.
+- CSS `scroll-snap-type: x mandatory` + `scroll-snap-stop: always`.
+- Pager dots at the bottom (tap = jump to that month). Current month label below the dots.
+- CKORE entries with Spotify show the cover thumbnail + title inline below the entry title.
+
+**MusicSidebar** (`src/app/temporal/MusicSidebar.tsx`):
+- Desktop only, fixed bottom-left corner.
+- Lists every CKORE entry with a Spotify URL — cover art + title + date, click opens Spotify in a new tab.
+- Hidden on mobile (CardDeck shows the same data inline).
+
+### 3.12 Mobile Broadsheet (homepage)
+
+The mobile homepage hero is **not** a stripped-down desktop hero. Different format entirely:
+
+- **Masthead**: small caps brand mark + live timestamp.
+- **Lede**: large editorial title ("ATTA logical"), italic byline, pull-quote ("An ecosystem in three branches.").
+- **Index**: typographic table of contents — five numbered routes (Laugical / CKORE / Catalogue / The Log / Contact). Tap routes or anchor-scrolls.
+- **Bottom-fixed search dock**: thumb-zone search input with a gradient fade-over-content above. AI chip resolution surfaces as a single floating pill above the search input (replaces the orbital chip behavior on mobile).
+- **Hint**: "type below to inquire. answers route inline."
+
+Desktop hero (the planetarium of glass + orbital chips + reflection) is untouched. The mobile branch in `src/app/page.tsx` is gated on `isMobile`.
+
+The sections below the hero (work, contact, projects, footer) use the existing responsive stacked layout — they're vertical-stacked by default and didn't need re-design.
+
 ---
 
 ## 4. VISUAL DESIGN SPECIFICATIONS
@@ -439,6 +595,39 @@ Works on both light and dark images. The double-layer border (white inner + dark
 - Server Component — no event handlers (CSS classes for hover)
 - Masonry image gallery, highlights grid
 
+#### `/temporal` — The Log / ATTLAS
+- Async server component reading from Neon via Prisma.
+- Desktop: force-directed organic graph (ATTLAS) — see §3.11.
+- Mobile: horizontal scroll-snap card deck, one card per month.
+- CKORE entries with a Spotify URL surface cover art + title (Atlas detail panel, MusicSidebar on desktop, inline on mobile).
+
+#### `/laugical/store` — Storefront
+- Three-tier product layout: one-of-one · made-to-order · dropship. See §3.9.
+- Cart drawer (slide-in desktop, bottom-sheet mobile).
+- Stripe Checkout (hosted, server-authoritative pricing).
+- `/laugical/store/success` — order confirmation, clears cart.
+
+#### `/admin` — Admin overview (gated)
+- Overview cards: log count + ghosted phase-2/5 placeholders.
+- Hidden entrance from homepage (`login` search → click ATTA → password modal). See §3.10.
+
+#### `/admin/log` — Log CRUD (gated)
+- Table of every `LogEntry`, inline edit / create / delete form.
+- Brand compound dropdown ("ATTA" + `logical` / `Laugical` / `CKORE`), type dropdown, lineage chip-select.
+- CKORE entries: Spotify URL field (server fetches oEmbed metadata on save).
+
+### 6.3 API Routes
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/contact` | POST | Resend email (inquiry + confirmation). Rate-limited 3/min/IP. |
+| `/api/resolve-chip` | POST | Tier-2 AI chip resolver. Routes to one of 5 destinations (work, contact, subscriptions, catalogue, laugical/store). |
+| `/api/checkout` | POST | Creates Stripe Checkout Session. Server-authoritative pricing. |
+| `/api/auth/login` | POST | Bcrypt-compares password, signs JWT cookie. Rate-limited 5/5min/IP. |
+| `/api/auth/logout` | POST | Clears the auth cookie. |
+| `/api/admin/log` | GET / POST | List / create log entries. Gated by middleware. |
+| `/api/admin/log/[id]` | PUT / DELETE | Update / delete a log entry. Gated. |
+
 ### 6.2 Project Data (`src/data/projects.ts`)
 
 | Slug | Title | Subtitle | Has Images |
@@ -466,8 +655,9 @@ Image naming convention:
 |-------|------|--------|
 | 1 | Foundation | ✅ COMPLETE |
 | 2 | Content Integration + Mobile | ✅ COMPLETE |
-| 3 | Brand Expansion (Laugical + CKORE) | ⬜ PLANNED — blocked on mockups |
+| 3 | Brand Expansion (Laugical + CKORE) | 🔄 IN PROGRESS — Laugical store live; CKORE music platform pending |
 | 4 | Refinement | 🔄 IN PROGRESS — copy review pending |
+| 5 | Admin / CMS | 🔄 IN PROGRESS — log CRUD live; projects + store CRUD pending |
 
 ---
 
@@ -503,14 +693,15 @@ Image naming convention:
 - **Homepage extended sections**: stacked single column; reduced padding (`12vw 6vw`); contact columns stack vertically; bio block full-width
 - `PopupContent` extracted as shared component — used by both desktop FLIP popup and mobile bottom sheet
 
-### 7.3 Phase 3: Brand Expansion ⬜ PLANNED
-**Status**: Blocked — waiting on Laugical and CKORE mockups.
+### 7.3 Phase 3: Brand Expansion 🔄 IN PROGRESS
 
-- **Goal**: Launch ATTA Laugical and ATTA.CKORE as distinct brand experiences
-- **Deliverables**:
-  - Laugical artistic interface — own search, own contact, progressive loading
-  - CKORE music platform — own search, own contact, releases, shop
-  - Cross-brand chip navigation (Laugical chip → Laugical, CKORE chip → CKORE)
+- **Complete**:
+  - ~~Laugical store~~ — `/laugical/store` live with three product types, cart, Stripe checkout, success page. See §3.9.
+  - ~~Cross-brand chip routing~~ — AI resolver knows `href:/laugical/store`; static resolver routes "Store" / "shop" / "merch" instantly. CKORE button in mobile broadsheet links to `/temporal`.
+- **Remaining (blocked on mockups)**:
+  - Laugical brand surface beyond the store (own search, own contact, progressive loading)
+  - CKORE music platform — releases, shop, listen interface
+  - Real product images for the Laugical store catalogue (currently shipping with placeholder products)
 
 ### 7.4 Phase 4: Refinement 🔄 IN PROGRESS
 **Status**: Site is live. Remaining items below.
@@ -526,6 +717,22 @@ Image naming convention:
   - ~~Page transition system~~ — blur/fade on all route changes via `#page-blur-layer` + `page:leaving` event
   - ~~Subscriptions page~~ — pricing tiers with contact form wired to `/api/contact`
   - ~~AI chip system~~ — two-tier resolver (instant keyword + Groq fallback), route normalization, desktop 3 / mobile 1 chip limits
+  - ~~Mobile broadsheet hero~~ — see §3.12. Replaced "rearranged desktop" mobile hero with editorial single-column.
+  - ~~Brand capitalization sweep~~ — ATTA always caps, logical always lower, Laugical always cap-L.
+  - ~~Catalogue info bar size animation~~ — `motion.div` `layout` wrapper smoothly resizes when active project changes (different description / tag count).
+  - ~~ATTLAS hover-pause~~ — pauses on node hover (not stage), with 80ms resume timer so adjacent-node transitions stay paused. Removed milestone CSS pulse that was causing visual drift while edges stayed put.
+
+### 7.5 Phase 5: Admin / CMS 🔄 IN PROGRESS
+
+- **Complete**:
+  - ~~Hidden login flow~~ — homepage search "login" → click ATTA → password modal → JWT cookie → `/admin`. See §3.10.
+  - ~~Neon Postgres + Prisma~~ — `LogEntry` model, seed script, idempotent upsert.
+  - ~~`/admin/log` full CRUD~~ — add / edit / delete entries from the live site. Brand compound dropdown, type dropdown, lineage chip-select, CKORE Spotify field.
+  - ~~Spotify oEmbed~~ — server-side cache of `spotifyTitle` + `spotifyThumb` per CKORE entry. Surfaces in ATTLAS detail panel, MusicSidebar, CardDeck inline.
+- **Remaining**:
+  - `/admin/projects` — move `src/data/projects.ts` into the database; add CRUD UI.
+  - `/admin/store` — move `STORE_PRODUCTS` into the database; add CRUD UI with image upload.
+  - Image upload — Vercel Blob or Cloudinary for product photos + project hero images.
 
 ---
 
@@ -568,14 +775,25 @@ Image naming convention:
 
 ### 9.4 Environment Variables & Deployment
 
-Both keys must be set in `.env.local` locally **and** in the Vercel project's Environment Variables dashboard — they are never committed (`.env*` is gitignored).
+All keys must be set in `.env` (or `.env.local`) locally **and** in the Vercel project's Environment Variables dashboard — they are never committed (`.env*` is gitignored).
 
 | Key | Purpose | Missing behaviour |
 |-----|---------|-------------------|
 | `GROQ_API_KEY` | AI chip fallback resolver | Silently returns `{ label: null }` — every query shows a question mark chip |
 | `RESEND_API_KEY` | Contact form email sender | `/api/contact` returns 503 |
+| `STRIPE_SECRET_KEY` | Store checkout | `/api/checkout` returns 500 "Checkout not configured" |
+| `DATABASE_URL` | Neon Postgres pooled connection (app runtime) | `/temporal` + admin pages 500 |
+| `DIRECT_URL` | Neon Postgres direct connection (migrations / seed) | `prisma db push` and `db seed` fail |
+| `ADMIN_PASSWORD_HASH` | Bcrypt hash of admin password | Login always 401 |
+| `AUTH_SECRET` | HS256 JWT signing key (≥32 chars random) | Login throws "AUTH_SECRET must be set and at least 32 characters" |
 
 After adding keys to Vercel, redeploy for them to take effect.
+
+**Local `.env` format** — bcrypt hashes contain `$` which Next.js's `dotenv-expand` interpolates as variable references. The `auth:set` script writes `ADMIN_PASSWORD_HASH` with `\$`-escapes inside single quotes. Don't hand-edit — re-run `npm run auth:set 'password'` to regenerate the line correctly.
+
+**Vercel env vars**: paste hashes raw (no quotes, no `\$` escaping). Vercel stores values as literal strings.
+
+**Setup runbook**: `docs/ADMIN_SETUP.md` walks through Neon project creation, env var configuration, schema push, seeding, and verification.
 
 **Google Workspace MX records** must be present in Vercel DNS for `boelie@attalogical.com` to receive email (see section 3.8). Without MX records, Resend shows "sent" but the email is delivered into a void.
 
@@ -601,10 +819,21 @@ After adding keys to Vercel, redeploy for them to take effect.
 - [x] Work experience and contact content live
 - [x] Project data (AshaOS, ATTA logical, Follow-AI) wired up
 - [x] Catalogue with scroll detection + bottom panel
+- [x] Catalogue info bar smoothly resizes when content changes
 - [x] Mobile responsiveness
+- [x] Mobile broadsheet hero (not a stripped-desktop)
 - [x] Analytics tracking (Vercel Analytics — `@vercel/analytics/next`)
 - [x] Domain SSL and Vercel config finalized — site live at attalogical.com
+- [x] `/temporal` ATTLAS + card deck
+- [x] `/laugical/store` end-to-end (cart, Stripe checkout, success page)
+- [x] Admin / CMS phase 1: log CRUD with Neon + Prisma
+- [x] ATTLAS hover-pause behaves correctly (per-node, no edge drift)
 - [ ] Copy review complete
+- [ ] `/admin/projects` CRUD
+- [ ] `/admin/store` CRUD (with image upload)
+- [ ] Real product imagery for Laugical store
+- [ ] CKORE music platform surface
+- [ ] Laugical brand surface beyond the store
 
 ---
 
@@ -635,4 +864,13 @@ Avoid design clichés, especially overused "AI aesthetics". Create recognition t
 
 ---
 
-**Document version 2.4 — Updated May 2026: AI chip system detail, page transition system, catalogue info bar, contact form (Resend + Google Workspace MX), subscriptions page, environment variable gotchas, Phase 4 completions**
+**Document version 2.5 — Updated May 2026:**
+- Added §3.9 — Laugical store + Stripe Checkout (cart drawer with desktop slide-in and mobile bottom-sheet variants, server-authoritative pricing)
+- Added §3.10 — Admin / CMS (hidden login flow, Neon + Prisma, dotenv `$`-escape gotcha)
+- Added §3.11 — Temporal Log / ATTLAS (force-directed graph desktop, scroll-snap card deck mobile, Spotify oEmbed for CKORE)
+- Added §3.12 — Mobile broadsheet hero (editorial single-column replacing stripped-desktop)
+- Added new routes in §6 (`/temporal`, `/laugical/store`, `/laugical/store/success`, `/admin`, `/admin/log`, plus the API table in §6.3)
+- Added Phase 5 (Admin / CMS) and reorganized Phase 3 (Brand Expansion — now in progress, Laugical store live)
+- Updated §9.4 env-var table with all 7 keys (DB, auth, Stripe)
+- Updated launch-readiness checklist
+- Resolved historical TODOs: catalogue info bar size animation; ATTLAS hover-pause node-scoped; milestone CSS pulse removed (edges stay aligned)

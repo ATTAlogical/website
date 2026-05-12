@@ -216,14 +216,22 @@ export default function Catalogue() {
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
           backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
           background: "rgba(247,247,247,0.92)", borderTop: "1px solid rgba(0,0,0,0.06)",
-          padding: isMobile
-            ? `0.85rem 5vw max(0.85rem, env(safe-area-inset-bottom, 0.85rem))`
-            : "1.5rem 8vw 2rem",
         }}
       >
+        {/* Inner layout-animated container — smoothly resizes when content (description, tag count, etc.) changes between projects */}
+        <motion.div
+          layout
+          transition={{ layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }}
+          style={{
+            padding: isMobile
+              ? `0.85rem 5vw max(0.85rem, env(safe-area-inset-bottom, 0.85rem))`
+              : "1.5rem 8vw 2rem",
+          }}
+        >
         <AnimatePresence mode="wait">
           <motion.div
             key={active.slug}
+            layout="position"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -283,6 +291,7 @@ export default function Catalogue() {
             )}
           </motion.div>
         </AnimatePresence>
+        </motion.div>
       </motion.div>,
       document.body
     )}
