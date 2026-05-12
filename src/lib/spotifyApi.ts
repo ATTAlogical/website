@@ -177,14 +177,31 @@ export async function fetchArtistAllTracksDiag(artistId: string): Promise<Import
   const token = await getToken();
   if (!token) return { tracks: [], reason: "no-token" };
 
-  const albumsQs = new URLSearchParams({
-    include_groups: "album,single",
-    limit: "50",
-  }).toString();
-  const albums = await authedFetch<{
+  // Pull every page of albums for the artist. Spotify's docs say limit max=50,
+  // but in practice (May 2026) the API returns 400 "Invalid limit" for
+  // anything > the default. We paginate at 20 per page until next === null.
+  type AlbumsPage = {
     items: Array<{ id: string; album_group: string }>;
     next: string | null;
-  }>(`/artists/${encodeURIComponent(artistId)}/albums?${albumsQs}`);
+  };
+  let albums: AlbumsPage | null = null;
+  let nextPath: string | null =
+    `/artists/${encodeURIComponent(artistId)}/albums?` +
+    new URLSearchParams({ include_groups: "album,single" }).toString();
+  let safety = 0;
+  while (nextPath && safety < 20) {
+    safety += 1;
+    const page: AlbumsPage | null = await authedFetch<AlbumsPage>(nextPath);
+    if (!page) break;
+    if (!albums) {
+      albums = page;
+    } else {
+      albums.items.push(...page.items);
+      albums.next = page.next;
+    }
+    // Spotify returns absolute URLs in `next`; strip the API base.
+    nextPath = page.next ? page.next.replace(API_BASE, "") : null;
+  }
   if (!albums) return { tracks: [], reason: "artist-not-found" };
   if (albums.items.length === 0) return { tracks: [], reason: "no-albums", albumCount: 0 };
 
