@@ -1435,18 +1435,29 @@ body::after {
 .atlas-node--pulse-strong .atlas-node-dot { animation-name: atlas-pulse-strong; }
 .atlas-node--pulse-weak .atlas-node-dot   { animation-name: atlas-pulse-weak; }
 
-/* Child nodes (e.g. tracks under an album) — collapsed onto their parent until
-   the parent is hovered, then they spread outward and fade in.
-   Both the physics rest length and the visual scale are tied to the hover state. */
+/* Child nodes (e.g. tracks under an album) — invisible at the parent's
+   position until the parent is hovered. The physics handles the spatial
+   spread; CSS only fades opacity in/out so we don't clobber the JS-set
+   SVG transform attribute. */
 .atlas-node--child {
-  transition: opacity 0.38s ease, transform 0.38s ease;
-  transform-box: fill-box;
-  transform-origin: center;
+  transition: opacity 0.38s ease;
 }
 .atlas-node--child.atlas-node--collapsed {
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.4);
+}
+
+/* Parent→child edges. Drawn beneath the nodes, kept invisible while the
+   child is collapsed (otherwise we'd draw zero-length lines at the parent). */
+.atlas-edge--parent {
+  stroke: rgba(0, 0, 0, 0.22);
+  stroke-width: 0.9;
+  stroke-dasharray: 2.5 3;
+  transition: opacity 0.38s ease;
+}
+.atlas-edge--collapsed {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Mood-tinted glow ring — always visible on CKORE-with-mood nodes, brighter on hover.

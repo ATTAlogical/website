@@ -113,12 +113,15 @@ function stepPhysics(
     }
   }
 
-  // Edge springs — skip any edge that touches a collapsed node
+  // Edge springs — skip any edge that touches a collapsed node, or any edge
+  // that's a parent-child relationship (those are handled by the parent-spring
+  // which has its own rest length).
   for (const edge of edges) {
     const i = byIndex.get(edge.from);
     const j = byIndex.get(edge.to);
     if (i === undefined || j === undefined) continue;
     if (isCollapsed[i] || isCollapsed[j]) continue;
+    if (parentMap.get(edge.from) === edge.to || parentMap.get(edge.to) === edge.from) continue;
     const a = nodes[i];
     const b = nodes[j];
     const sameBranch = branches.get(edge.from) === branches.get(edge.to);
@@ -320,18 +323,33 @@ export default function AtlasView({
   const hoveredRef = useRef<string | null>(null);
   useEffect(() => { hoveredRef.current = hovered; }, [hovered]);
 
-  const edges = useMemo(() => computeEdges(entries), [entries]);
-  const branchMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of entries) m.set(e.slug, e.branch);
-    return m;
-  }, [entries]);
   /** child slug → parent slug, for nodes with a parentSlug (e.g. tracks under albums). */
   const parentMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of entries) {
       if (e.parentSlug) m.set(e.slug, e.parentSlug);
     }
+    return m;
+  }, [entries]);
+  /** All edges: lineage from links[] PLUS one edge per parent → child relationship. */
+  const edges = useMemo(() => {
+    const base = computeEdges(entries);
+    for (const e of entries) {
+      if (e.parentSlug) base.push({ from: e.parentSlug, to: e.slug });
+    }
+    return base;
+  }, [entries]);
+  /** Which edges are parent→child (rendered with dashed style + collapse-aware visibility) */
+  const parentEdgeKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) {
+      if (e.parentSlug) set.add(`${e.parentSlug}->${e.slug}`);
+    }
+    return set;
+  }, [entries]);
+  const branchMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of entries) m.set(e.slug, e.branch);
     return m;
   }, [entries]);
   const activeSet = useMemo(
@@ -463,6 +481,14 @@ export default function AtlasView({
             const key = `${e.from}->${e.to}`;
             const isActive = activeSet ? activeSet.has(e.from) && activeSet.has(e.to) : false;
             const isDim = activeSet ? !isActive : false;
+            const isParent = parentEdgeKeys.has(key);
+            // Parent→child edge is hidden while the child is collapsed (i.e. while
+            // the parent is not the currently-hovered slug)
+            const fromIsChild = parentMap.has(e.from);
+            const toIsChild = parentMap.has(e.to);
+            const childSlug = fromIsChild ? e.from : toIsChild ? e.to : null;
+            const childParent = childSlug ? parentMap.get(childSlug) : null;
+            const childCollapsed = !!childParent && childParent !== hovered;
             return (
               <path
                 key={key}
@@ -470,7 +496,13 @@ export default function AtlasView({
                   if (el) edgeRefs.current.set(key, el);
                   else edgeRefs.current.delete(key);
                 }}
-                className={`atlas-edge${isActive ? " atlas-edge--active" : ""}${isDim ? " atlas-edge--dim" : ""}`}
+                className={[
+                  "atlas-edge",
+                  isActive && "atlas-edge--active",
+                  isDim && "atlas-edge--dim",
+                  isParent && "atlas-edge--parent",
+                  childCollapsed && "atlas-edge--collapsed",
+                ].filter(Boolean).join(" ")}
                 d=""
                 fill="none"
               />
