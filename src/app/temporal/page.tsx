@@ -8,7 +8,10 @@ import MastheadTitle from "./MastheadTitle";
 export const dynamic = "force-dynamic";
 
 export default async function TemporalPage() {
-  const rows = await prisma.logEntry.findMany({ orderBy: { date: "desc" } });
+  const [rows, settings] = await Promise.all([
+    prisma.logEntry.findMany({ orderBy: { date: "desc" } }),
+    prisma.siteSettings.findUnique({ where: { id: 1 } }),
+  ]);
 
   // Shape into the existing LogEntry type (the view code already understands this shape)
   const entries: (LogEntry & {
@@ -40,7 +43,7 @@ export default async function TemporalPage() {
         <LiveTimestamp />
       </header>
 
-      <TemporalClient entries={entries} />
+      <TemporalClient entries={entries} spotifyProfile={settings?.spotifyProfile ?? null} />
     </main>
   );
 }

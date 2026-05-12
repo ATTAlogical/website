@@ -17,6 +17,11 @@ export default async function AdminOverview() {
           <span className="admin-card-count">{logCount}</span>
           <span className="admin-card-desc">/temporal entries</span>
         </Link>
+        <Link href="/admin/settings" className="admin-card">
+          <span className="admin-card-name">Settings</span>
+          <span className="admin-card-count">·</span>
+          <span className="admin-card-desc">Spotify profile, etc.</span>
+        </Link>
         <div className="admin-card admin-card--ghost" aria-disabled>
           <span className="admin-card-name">Projects</span>
           <span className="admin-card-count">—</span>

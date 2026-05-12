@@ -13,7 +13,13 @@ export type TemporalEntry = LogEntry & {
   spotifyThumb?: string | null;
 };
 
-export default function TemporalClient({ entries }: { entries: TemporalEntry[] }) {
+export default function TemporalClient({
+  entries,
+  spotifyProfile,
+}: {
+  entries: TemporalEntry[];
+  spotifyProfile?: string | null;
+}) {
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -29,11 +35,14 @@ export default function TemporalClient({ entries }: { entries: TemporalEntry[] }
     (e) => e.branch === "ckore" && e.spotifyUrl && e.spotifyThumb,
   );
 
+  // Show sidebar if there are CKORE tracks OR a profile URL is set
+  const showSidebar = !isMobile && (ckoreWithSpotify.length > 0 || !!spotifyProfile);
+
   return (
     <>
       {isMobile ? <CardDeckView entries={entries} /> : <AtlasView entries={entries} />}
-      {!isMobile && ckoreWithSpotify.length > 0 && (
-        <MusicSidebar entries={ckoreWithSpotify} />
+      {showSidebar && (
+        <MusicSidebar entries={ckoreWithSpotify} spotifyProfile={spotifyProfile} />
       )}
     </>
   );

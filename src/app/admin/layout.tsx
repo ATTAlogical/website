@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin" className="admin-brand">ATTA logical · admin</Link>
         <nav className="admin-nav">
           <Link href="/admin/log">log</Link>
+          <Link href="/admin/settings">settings</Link>
           <LogoutButton />
         </nav>
       </header>

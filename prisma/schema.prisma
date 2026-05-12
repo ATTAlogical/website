@@ -48,3 +48,14 @@ model LogEntry {
   @@index([branch])
   @@index([date])
 }
+
+// ─── Site settings ────────────────────────────────────────────────────────────
+// Single-row table for site-wide settings the admin can edit without touching
+// code. Always upsert with id = 1 — there is only ever one row.
+
+model SiteSettings {
+  id              Int      @id @default(1)
+  /// Spotify artist/user profile URL — surfaces in the ATTLAS music sidebar.
+  spotifyProfile  String?
+  updatedAt       DateTime @updatedAt
+}
