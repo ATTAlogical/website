@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
 import {
   computeEdges,
-  TYPE_GLYPH,
   TYPE_WEIGHT,
-  BRANCH_LABEL,
   type LogEntry,
 } from "@/data/log";
 
@@ -195,77 +191,17 @@ type EntryWithSpotify = LogEntry & {
   spotifyValence?: number | null;
 };
 
-function DetailPanel({
-  entry,
-  onClose,
-}: {
-  entry: EntryWithSpotify;
-  onClose: () => void;
-}) {
-  return (
-    <motion.aside
-      className="atlas-detail"
-      role="dialog"
-      aria-modal="false"
-      aria-label={entry.title}
-      initial={{ x: 360, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 360, opacity: 0 }}
-      transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-    >
-      <div className="atlas-detail-head">
-        <span className={`atlas-detail-branch atlas-branch-${entry.branch}`}>
-          {BRANCH_LABEL[entry.branch]}
-        </span>
-        <span className="atlas-detail-date">{entry.date}</span>
-        <button className="atlas-detail-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </div>
-      <h3 className="atlas-detail-title">
-        <span className="atlas-detail-glyph" aria-hidden>{TYPE_GLYPH[entry.type]}</span>
-        {entry.title}
-      </h3>
-      {entry.body && <p className="atlas-detail-body">{entry.body}</p>}
-      {entry.spotifyUrl && entry.spotifyThumb && (
-        <a
-          href={entry.spotifyUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="music-row"
-          style={{ marginBottom: 18 }}
-        >
-          <img
-            src={entry.spotifyThumb}
-            alt=""
-            className="music-row-cover"
-            loading="lazy"
-            decoding="async"
-          />
-          <span className="music-row-meta">
-            <span className="music-row-title">{entry.spotifyTitle ?? "Listen on Spotify"}</span>
-            <span className="music-row-date">spotify ↗</span>
-          </span>
-        </a>
-      )}
-      {entry.href && (
-        entry.external ? (
-          <a href={entry.href} target="_blank" rel="noreferrer" className="atlas-detail-link">
-            visit ↗
-          </a>
-        ) : (
-          <Link href={entry.href} className="atlas-detail-link">
-            visit →
-          </Link>
-        )
-      )}
-    </motion.aside>
-  );
-}
-
 // ─── AtlasView ────────────────────────────────────────────────────────────────
 
-export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) {
+export default function AtlasView({
+  entries,
+  selected,
+  onSelect,
+}: {
+  entries: EntryWithSpotify[];
+  selected: EntryWithSpotify | null;
+  onSelect: (entry: EntryWithSpotify | null) => void;
+}) {
   const stageRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Map<string, SVGGElement>>(new Map());
   const edgeRefs = useRef<Map<string, SVGPathElement>>(new Map());
@@ -301,7 +237,6 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
     }
   };
 
-  const [selected, setSelected] = useState<LogEntry | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -492,8 +427,24 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
                 onMouseLeave={() => { setHovered(null); endHoverPause(); }}
                 onFocus={() => { setHovered(entry.slug); beginHoverPause(); }}
                 onBlur={() => { setHovered(null); endHoverPause(); }}
-                onClick={() => setSelected(entry)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(entry); } }}
+                onClick={() => {
+                  onSelect(entry);
+                  // Clear hover state — user is reading the panel now, field should resume.
+                  hoverCountRef.current = 0;
+                  pausedRef.current = false;
+                  if (resumeTimerRef.current) {
+                    clearTimeout(resumeTimerRef.current);
+                    resumeTimerRef.current = null;
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(entry);
+                    hoverCountRef.current = 0;
+                    pausedRef.current = false;
+                  }
+                }}
               >
                 {/* Outer glow ring (visible on hover) */}
                 <circle className="atlas-node-glow" r={radius + 9} />
@@ -516,11 +467,6 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
         </g>
       </svg>
 
-      <AnimatePresence>
-        {selected && (
-          <DetailPanel entry={selected} onClose={() => setSelected(null)} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

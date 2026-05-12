@@ -7,6 +7,7 @@ export type LogEntryType =
   | "project"    // client / commissioned / public work shipped
   | "track"      // a music release, draft, or session
   | "drop"       // a store drop, edition release, or product
+  | "profile"    // an account / artist profile node (e.g. ATTA.CKORE on Spotify)
   | "note"       // a written observation or thought
   | "milestone"; // a beginning, ending, or threshold
 
@@ -169,12 +170,14 @@ export const TYPE_GLYPH: Record<LogEntryType, string> = {
   project: "↗",
   track: "♪",
   drop: "€",
+  profile: "◉",
   note: "¶",
   milestone: "◇",
 };
 
 /** Node radius hint per type — milestones largest, notes smallest. */
 export const TYPE_WEIGHT: Record<LogEntryType, number> = {
+  profile: 1.8,    // artist hub: the largest, connects to everything
   milestone: 1.6,
   project: 1.3,
   drop: 1.15,

@@ -1435,12 +1435,19 @@ body::after {
 .atlas-node--pulse-strong .atlas-node-dot { animation-name: atlas-pulse-strong; }
 .atlas-node--pulse-weak .atlas-node-dot   { animation-name: atlas-pulse-weak; }
 
-/* Mood-tinted glow ring — quietly modulates the existing hover glow when set */
+/* Mood-tinted glow ring — always visible on CKORE-with-mood nodes, brighter on hover.
+   Drives the "reflection / aura" feel under each song. */
 .atlas-node--mood .atlas-node-glow {
   fill: var(--mood-color, currentColor);
+  opacity: 0.22; /* baseline visibility */
+  filter: blur(2px);
 }
-.atlas-node--mood:not(.atlas-node--hovered):not(.atlas-node--active) .atlas-node-glow {
-  opacity: 0.06;
+.atlas-node--mood.atlas-node--hovered .atlas-node-glow,
+.atlas-node--mood.atlas-node--active .atlas-node-glow {
+  opacity: 0.45;
+}
+.atlas-node--mood.atlas-node--dim .atlas-node-glow {
+  opacity: 0.10;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2254,7 +2261,7 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   transition: color 0.15s;
 }
 .music-sidebar-profile:hover { color: oklch(10% 0.005 255); }
-/* Music row — track in the sidebar */
+/* Music row — track in the sidebar. Renders as a button now (was anchor). */
 .music-row {
   position: relative;
   display: grid;
@@ -2267,8 +2274,45 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   border-radius: 4px;
   transition: background 0.18s ease;
   isolation: isolate;
+  /* Button reset */
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
 }
 .music-row:hover { background: oklch(96% 0.006 255); }
+
+/* Now-playing indicator — three short bars over the cover bottom-left */
+.music-row-playing-indicator {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  padding: 2px 3px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 2px;
+  height: 10px;
+  z-index: 2;
+}
+.music-row-playing-indicator span {
+  display: block;
+  width: 1.5px;
+  background: oklch(98% 0.005 145);
+  border-radius: 0.5px;
+  animation: music-bar 0.9s ease-in-out infinite;
+}
+.music-row-playing-indicator span:nth-child(1) { height: 5px; animation-delay: 0s; }
+.music-row-playing-indicator span:nth-child(2) { height: 7px; animation-delay: 0.18s; }
+.music-row-playing-indicator span:nth-child(3) { height: 4px; animation-delay: 0.36s; }
+@keyframes music-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
+}
+.music-row--playing { background: oklch(95% 0.006 255); }
 
 /* Mood-tinted glow halo — sits behind the row. Color comes from --mood-color
    set inline per track based on Spotify valence/energy. */

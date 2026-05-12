@@ -43,6 +43,7 @@ const TYPE_OPTIONS: AdminEntry["type"][] = [
   "project",
   "track",
   "drop",
+  "profile",
   "note",
   "milestone",
 ];

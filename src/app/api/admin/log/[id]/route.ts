@@ -30,8 +30,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Refresh full Spotify metadata when:
   //  - branch becomes non-ckore or URL is removed → null everything
-  //  - URL changed → refetch all
-  //  - otherwise → keep existing cached values
+  //  - CKORE + URL is present → always refetch (so existing entries get filled
+  //    in on save; cost is one API call per save, which is fine for admin use)
   let spotifyFields: Partial<{
     spotifyTitle: string | null;
     spotifyThumb: string | null;
@@ -55,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       spotifyPopularity: null, spotifyTempo: null, spotifyEnergy: null,
       spotifyValence: null, spotifyDanceability: null,
     };
-  } else if (parsed.data.spotifyUrl !== existing.spotifyUrl) {
+  } else {
     const meta = await fetchSpotifyMetaFull(parsed.data.spotifyUrl);
     spotifyFields = {
       spotifyTitle: meta?.title ?? null,

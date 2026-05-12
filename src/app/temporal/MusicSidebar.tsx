@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useMotionValue } from "motion/react";
+import { motion, useMotionValue, animate } from "motion/react";
 import type { TemporalEntry } from "./TemporalClient";
 
 const STORAGE_KEY = "music-sidebar-pos";
@@ -18,25 +18,21 @@ function fmtDuration(ms: number | null | undefined): string | null {
 
 function fmtReleaseDate(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  if (raw.length === 4) return raw; // year only
-  if (raw.length === 7) return raw; // YYYY-MM
+  if (raw.length === 4) return raw;
+  if (raw.length === 7) return raw;
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return raw;
   return d.toISOString().slice(0, 10);
 }
 
-/** Map valence (0..1) and energy (0..1) to a quiet color glow string. */
 function moodColor(valence: number | null | undefined, energy: number | null | undefined): string | null {
   if (valence == null || energy == null) return null;
-  // Hue: 250° (sad/blue) → 60° (happy/yellow)
   const hue = 250 - valence * 190;
-  // Lightness softens with low energy
   const light = 60 + energy * 12;
   const chroma = 0.07 + energy * 0.07;
   return `oklch(${light}% ${chroma} ${hue})`;
 }
 
-/** Track-tempo → CSS animation duration (ms per beat). Clamped to a sane range. */
 function bpmToDuration(bpm: number | null | undefined): string | null {
   if (!bpm || bpm < 30) return null;
   const clamped = Math.max(40, Math.min(220, bpm));
@@ -44,15 +40,15 @@ function bpmToDuration(bpm: number | null | undefined): string | null {
 }
 
 // ─── Audio preview manager ───────────────────────────────────────────────────
-// One shared <audio> element. Plays the hovered row's previewUrl with a small
-// fade-in via volume; pauses on hover-out.
 
 function useAudioPreview(): {
-  play: (url: string | null | undefined) => void;
+  play: (url: string | null | undefined, slug: string) => void;
   stop: () => void;
+  playingSlug: string | null;
 } {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [playingSlug, setPlayingSlug] = useState<string | null>(null);
 
   const ensureAudio = () => {
     if (audioRef.current) return audioRef.current;
@@ -87,23 +83,25 @@ function useAudioPreview(): {
     }, stepMs);
   };
 
-  const play = (url: string | null | undefined) => {
-    if (!url) return;
-    const a = ensureAudio();
-    if (a.src !== url) {
-      a.src = url;
+  const play = (url: string | null | undefined, slug: string) => {
+    if (!url) {
+      setPlayingSlug(null);
+      return;
     }
+    const a = ensureAudio();
+    if (a.src !== url) a.src = url;
     a.volume = 0;
-    a.play().catch(() => { /* autoplay blocked — silent fail */ });
+    a.play()
+      .then(() => setPlayingSlug(slug))
+      .catch(() => setPlayingSlug(null));
     fadeTo(0.36, 280);
   };
 
   const stop = () => {
     const a = audioRef.current;
+    setPlayingSlug(null);
     if (!a) return;
-    fadeTo(0, 220, () => {
-      a.pause();
-    });
+    fadeTo(0, 220, () => a.pause());
   };
 
   useEffect(() => {
@@ -114,7 +112,7 @@ function useAudioPreview(): {
     };
   }, []);
 
-  return { play, stop };
+  return { play, stop, playingSlug };
 }
 
 // ─── Music row ────────────────────────────────────────────────────────────────
@@ -122,48 +120,49 @@ function useAudioPreview(): {
 function MusicRow({
   entry,
   hoveredSlug,
+  playingSlug,
   onHoverStart,
   onHoverEnd,
+  onSelect,
   showVanity,
 }: {
   entry: TemporalEntry;
   hoveredSlug: string | null;
+  playingSlug: string | null;
   onHoverStart: () => void;
   onHoverEnd: () => void;
+  onSelect: () => void;
   showVanity?: boolean;
 }) {
   const isHovered = hoveredSlug === entry.slug;
   const someoneElseHovered = hoveredSlug !== null && !isHovered;
+  const isPlaying = playingSlug === entry.slug;
 
   const dur = fmtDuration(entry.spotifyDurationMs);
   const rel = fmtReleaseDate(entry.spotifyReleaseDate);
   const mood = moodColor(entry.spotifyValence, entry.spotifyEnergy);
   const bpmDur = bpmToDuration(entry.spotifyTempo);
 
-  // Pulse amplitude states (via CSS class)
   const pulseStrength = isHovered ? "music-row--pulse-strong"
     : someoneElseHovered ? "music-row--pulse-weak"
     : "music-row--pulse-normal";
 
-  const style: React.CSSProperties = {
-    ["--mood-color" as string]: mood ?? "transparent",
-    ["--bpm-duration" as string]: bpmDur ?? "0ms",
-  };
+  const style = {} as Record<string, string>;
+  if (mood) style["--mood-color"] = mood;
+  if (bpmDur) style["--bpm-duration"] = bpmDur;
 
   return (
-    <a
-      href={entry.spotifyUrl ?? "#"}
-      target="_blank"
-      rel="noreferrer"
-      className={`music-row ${pulseStrength}${entry.spotifyTempo ? " music-row--has-bpm" : ""}`}
-      style={style}
+    <button
+      type="button"
+      className={`music-row ${pulseStrength}${entry.spotifyTempo ? " music-row--has-bpm" : ""}${isPlaying ? " music-row--playing" : ""}`}
+      style={style as React.CSSProperties}
       title={entry.spotifyTitle ?? entry.title}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onFocus={onHoverStart}
       onBlur={onHoverEnd}
+      onClick={onSelect}
     >
-      {/* Soft mood-tinted glow halo behind the row */}
       <span className="music-row-glow" aria-hidden />
 
       <span className="music-row-cover-wrap">
@@ -178,7 +177,6 @@ function MusicRow({
         ) : (
           <span className="music-row-cover music-row-cover--placeholder" />
         )}
-        {/* Glass-reflection of the cover beneath the row */}
         {entry.spotifyThumb && (
           <img
             src={entry.spotifyThumb}
@@ -188,6 +186,12 @@ function MusicRow({
             loading="lazy"
             decoding="async"
           />
+        )}
+        {/* Playing indicator — three animated bars over the cover */}
+        {isPlaying && (
+          <span className="music-row-playing-indicator" aria-hidden>
+            <span /><span /><span />
+          </span>
         )}
       </span>
 
@@ -207,7 +211,7 @@ function MusicRow({
           )}
         </span>
       </span>
-    </a>
+    </button>
   );
 }
 
@@ -217,17 +221,21 @@ export default function MusicSidebar({
   entries,
   spotifyProfile,
   showVanity,
+  detailOpen,
+  onSelect,
 }: {
   entries: TemporalEntry[];
   spotifyProfile?: string | null;
   showVanity?: boolean;
+  detailOpen?: boolean;
+  onSelect: (entry: TemporalEntry) => void;
 }) {
   const dragAreaRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [mounted, setMounted] = useState(false);
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
-  const audio = useAudioPreview();
+  const { play, stop, playingSlug } = useAudioPreview();
 
   useEffect(() => {
     try {
@@ -250,19 +258,45 @@ export default function MusicSidebar({
     } catch { /* ignore */ }
   };
 
+  // When detail panel opens, if the sidebar would overlap it, glide back to the
+  // default bottom-left position. The detail panel is fixed at top-right ~340px
+  // wide × ~viewport-height tall.
+  useEffect(() => {
+    if (!detailOpen || !mounted) return;
+    const rect = dragAreaRef.current?.parentElement
+      ? document.querySelector(".music-sidebar")?.getBoundingClientRect()
+      : null;
+    if (!rect) return;
+    const overlapsRight = rect.right > window.innerWidth - 380;
+    const overlapsTop = rect.top < 80;
+    if (overlapsRight || overlapsTop) {
+      animate(x, 0, { duration: 0.5, ease: [0.16, 1, 0.3, 1] });
+      animate(y, 0, { duration: 0.5, ease: [0.16, 1, 0.3, 1] });
+      // Save the snap-back position too
+      setTimeout(persistPosition, 600);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailOpen, mounted]);
+
   const onRowHoverStart = (entry: TemporalEntry) => {
     setHoveredSlug(entry.slug);
-    audio.play(entry.spotifyPreviewUrl);
+    play(entry.spotifyPreviewUrl, entry.slug);
   };
 
   const onRowHoverEnd = () => {
     setHoveredSlug(null);
-    audio.stop();
+    stop();
+  };
+
+  const onRowSelect = (entry: TemporalEntry) => {
+    // Selecting a track opens the detail panel. Stop the audio preview so it
+    // doesn't keep playing while the user reads the detail.
+    stop();
+    onSelect(entry);
   };
 
   return (
     <>
-      {/* Invisible drag-area container fills the viewport */}
       <div
         ref={dragAreaRef}
         aria-hidden
@@ -300,6 +334,7 @@ export default function MusicSidebar({
               rel="noreferrer"
               className="music-sidebar-profile"
               title="Open CKORE on Spotify"
+              onClick={(e) => e.stopPropagation()}
             >
               CKORE ↗
             </a>
@@ -314,8 +349,10 @@ export default function MusicSidebar({
             key={entry.slug}
             entry={entry}
             hoveredSlug={hoveredSlug}
+            playingSlug={playingSlug}
             onHoverStart={() => onRowHoverStart(entry)}
             onHoverEnd={onRowHoverEnd}
+            onSelect={() => onRowSelect(entry)}
             showVanity={showVanity}
           />
         ))}

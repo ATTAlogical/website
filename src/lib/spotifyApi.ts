@@ -140,50 +140,64 @@ export async function fetchArtist(id: string): Promise<SpotifyArtistDetail | nul
   return authedFetch<SpotifyArtistDetail>(`/artists/${encodeURIComponent(id)}`);
 }
 
-/** Fetches every track from every album of an artist. Albums + singles, no compilations. */
-export async function fetchArtistAllTracks(artistId: string): Promise<SpotifyTrack[]> {
+export type ImportDiagnostic = {
+  tracks: SpotifyTrack[];
+  /** Diagnostic reasons when the result is empty. */
+  reason?: "no-token" | "artist-not-found" | "no-albums" | "no-tracks-in-albums";
+  albumCount?: number;
+};
+
+/** Fetches every track from every album of an artist. Albums + singles, no compilations.
+ *  Returns a diagnostic object so admin UI can show *why* zero tracks came back. */
+export async function fetchArtistAllTracksDiag(artistId: string): Promise<ImportDiagnostic> {
+  const token = await getToken();
+  if (!token) return { tracks: [], reason: "no-token" };
+
   const albums = await authedFetch<{
     items: Array<{ id: string; album_group: string }>;
     next: string | null;
   }>(
-    `/artists/${encodeURIComponent(artistId)}/albums?include_groups=album,single&limit=50&market=US`,
+    `/artists/${encodeURIComponent(artistId)}/albums?include_groups=album,single&limit=50`,
   );
-  if (!albums) return [];
+  if (!albums) return { tracks: [], reason: "artist-not-found" };
+  if (albums.items.length === 0) return { tracks: [], reason: "no-albums", albumCount: 0 };
 
   const albumIds = albums.items.map((a) => a.id);
-  // Spotify allows batch /albums?ids=... up to 20
-  const trackUrls: string[] = [];
+  const trackIds: string[] = [];
   for (let i = 0; i < albumIds.length; i += 20) {
     const batch = albumIds.slice(i, i + 20);
     const result = await authedFetch<{
-      albums: Array<{
-        id: string;
-        name: string;
-        release_date: string;
-        images: SpotifyImage[];
-        tracks: { items: Array<{ id: string }> };
-      }>;
-    }>(`/albums?ids=${batch.join(",")}&market=US`);
+      albums: Array<{ tracks: { items: Array<{ id: string }> } }>;
+    }>(`/albums?ids=${batch.join(",")}`);
     if (!result) continue;
     for (const album of result.albums) {
       for (const item of album.tracks.items) {
-        trackUrls.push(item.id);
+        trackIds.push(item.id);
       }
     }
   }
 
-  // De-dup track IDs (same track can appear on album + single)
-  const uniqueIds = Array.from(new Set(trackUrls));
+  const uniqueIds = Array.from(new Set(trackIds));
+  if (uniqueIds.length === 0) {
+    return { tracks: [], reason: "no-tracks-in-albums", albumCount: albums.items.length };
+  }
+
   const tracks: SpotifyTrack[] = [];
   for (let i = 0; i < uniqueIds.length; i += 50) {
     const batch = uniqueIds.slice(i, i + 50);
     const result = await authedFetch<{ tracks: SpotifyTrack[] }>(
-      `/tracks?ids=${batch.join(",")}&market=US`,
+      `/tracks?ids=${batch.join(",")}`,
     );
     if (result?.tracks) {
       for (const t of result.tracks) if (t) tracks.push(t);
     }
   }
+  return { tracks, albumCount: albums.items.length };
+}
+
+/** Back-compat wrapper that returns just the tracks. */
+export async function fetchArtistAllTracks(artistId: string): Promise<SpotifyTrack[]> {
+  const { tracks } = await fetchArtistAllTracksDiag(artistId);
   return tracks;
 }
 
@@ -204,33 +218,61 @@ export type SpotifyMetaFull = {
   danceability: number | null;
 };
 
-/** Fetches everything in one shot for a track URL. Returns null on any failure. */
+/** Fetches everything in one shot for a Spotify URL. Supports track URLs and artist URLs.
+ * Returns null on any failure. */
 export async function fetchSpotifyMetaFull(url: string): Promise<SpotifyMetaFull | null> {
-  const id = extractTrackId(url);
-  if (!id) return null;
-  const [track, features] = await Promise.all([
-    fetchTrack(id),
-    fetchAudioFeatures(id),
-  ]);
-  if (!track) return null;
+  // First try as a track URL
+  const trackId = extractTrackId(url);
+  if (trackId) {
+    const [track, features] = await Promise.all([
+      fetchTrack(trackId),
+      fetchAudioFeatures(trackId),
+    ]);
+    if (!track) return null;
+    const thumb = track.album.images.reduce<SpotifyImage | null>((best, img) => {
+      if (!best) return img;
+      return img.width > best.width ? best : img;
+    }, null);
+    return {
+      title: `${track.name} — ${track.artists.map((a) => a.name).join(", ")}`,
+      thumbnail: thumb?.url ?? null,
+      durationMs: track.duration_ms,
+      releaseDate: track.album.release_date,
+      artist: track.artists.map((a) => a.name).join(", "),
+      album: track.album.name,
+      previewUrl: track.preview_url,
+      popularity: track.popularity,
+      tempo: features?.tempo ?? null,
+      energy: features?.energy ?? null,
+      valence: features?.valence ?? null,
+      danceability: features?.danceability ?? null,
+    };
+  }
 
-  const thumb = track.album.images.reduce<SpotifyImage | null>((best, img) => {
-    if (!best) return img;
-    return img.width > best.width ? best : img; // smallest is fine for thumbnail
-  }, null);
+  // Otherwise try as an artist URL (for profile-type entries like the CKORE hub)
+  const artistId = extractArtistId(url);
+  if (artistId) {
+    const artist = await fetchArtist(artistId);
+    if (!artist) return null;
+    const thumb = artist.images.reduce<SpotifyImage | null>((best, img) => {
+      if (!best) return img;
+      return img.width > best.width ? best : img;
+    }, null);
+    return {
+      title: artist.name,
+      thumbnail: thumb?.url ?? null,
+      durationMs: 0,
+      releaseDate: "",
+      artist: artist.name,
+      album: artist.genres.slice(0, 3).join(", ") || "Spotify artist",
+      previewUrl: null,
+      popularity: artist.followers.total,
+      tempo: null,
+      energy: null,
+      valence: null,
+      danceability: null,
+    };
+  }
 
-  return {
-    title: `${track.name} — ${track.artists.map((a) => a.name).join(", ")}`,
-    thumbnail: thumb?.url ?? null,
-    durationMs: track.duration_ms,
-    releaseDate: track.album.release_date,
-    artist: track.artists.map((a) => a.name).join(", "),
-    album: track.album.name,
-    previewUrl: track.preview_url,
-    popularity: track.popularity,
-    tempo: features?.tempo ?? null,
-    energy: features?.energy ?? null,
-    valence: features?.valence ?? null,
-    danceability: features?.danceability ?? null,
-  };
+  return null;
 }

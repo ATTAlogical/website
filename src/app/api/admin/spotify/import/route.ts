@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchArtistAllTracks, fetchAudioFeatures, extractArtistId } from "@/lib/spotifyApi";
+import { fetchArtistAllTracksDiag, fetchAudioFeatures, extractArtistId } from "@/lib/spotifyApi";
 
 function slugify(input: string): string {
   return input
@@ -49,10 +49,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const tracks = await fetchArtistAllTracks(artistId);
+  const { tracks, reason, albumCount } = await fetchArtistAllTracksDiag(artistId);
   if (tracks.length === 0) {
+    const reasonText = reason === "no-token"
+      ? "Spotify credentials are missing or invalid (SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET)."
+      : reason === "artist-not-found"
+      ? `Artist ID "${artistId}" returned 404 from Spotify. Make sure you pasted only the alphanumeric ID — the part after /artist/ in the URL.`
+      : reason === "no-albums"
+      ? `Artist exists but has zero albums/singles on Spotify yet.`
+      : reason === "no-tracks-in-albums"
+      ? `Artist has ${albumCount ?? "some"} albums but no tracks inside them. This is unusual — try a different artist.`
+      : "Spotify returned no tracks. Unknown cause.";
     return NextResponse.json(
-      { error: "Spotify returned no tracks for that artist ID. Check credentials and ID." },
+      { error: reasonText, artistId, reason },
       { status: 502 },
     );
   }

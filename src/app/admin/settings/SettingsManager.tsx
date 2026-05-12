@@ -14,6 +14,8 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
   const [saved, setSaved] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
@@ -70,6 +72,29 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
     setImporting(false);
   };
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    if (!confirm("Re-fetch Spotify metadata for every existing CKORE entry? Takes a few seconds.")) return;
+    setRefreshing(true);
+    setRefreshResult(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/spotify/refresh", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Refresh failed");
+        setRefreshing(false);
+        return;
+      }
+      setRefreshResult(
+        `Refreshed ${data.refreshed} track${data.refreshed === 1 ? "" : "s"} · ${data.failed} failed · ${data.total} total.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    }
+    setRefreshing(false);
+  };
+
   return (
     <section className="admin-settings">
       <h1 className="admin-h1">Settings</h1>
@@ -77,6 +102,7 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
 
       {error && <div className="admin-error" role="alert">{error}</div>}
       {importResult && <div className="admin-info">{importResult}</div>}
+      {refreshResult && <div className="admin-info">{refreshResult}</div>}
 
       <form className="admin-form" onSubmit={handleSave}>
         <h2 className="admin-form-title">Spotify</h2>
@@ -143,6 +169,21 @@ export default function SettingsManager({ initial }: { initial: Settings }) {
         <div className="admin-form-actions">
           <button type="submit" className="admin-btn admin-btn--primary" disabled={importing}>
             {importing ? "importing…" : "import from Spotify"}
+          </button>
+        </div>
+      </form>
+
+      <form className="admin-form" onSubmit={(e) => { e.preventDefault(); handleRefresh(); }}>
+        <h2 className="admin-form-title">Refresh all CKORE metadata</h2>
+        <p className="admin-hint" style={{ marginBottom: 16 }}>
+          Re-fetches Spotify metadata (duration, release date, BPM, energy, valence,
+          preview URL, album art) for every existing CKORE entry. Run this once after
+          turning on Spotify credentials to fill in entries created earlier.
+        </p>
+
+        <div className="admin-form-actions">
+          <button type="submit" className="admin-btn" disabled={refreshing}>
+            {refreshing ? "refreshing…" : "refresh metadata"}
           </button>
         </div>
       </form>

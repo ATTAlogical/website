@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { fetchSpotifyMetaFull } from "@/lib/spotifyApi";
 
 const VALID_BRANCHES = ["atta", "laugical", "ckore"] as const;
-const VALID_TYPES = ["build", "project", "track", "drop", "note", "milestone"] as const;
+const VALID_TYPES = ["build", "project", "track", "drop", "profile", "note", "milestone"] as const;
 
 type Branch = (typeof VALID_BRANCHES)[number];
 type LogType = (typeof VALID_TYPES)[number];
