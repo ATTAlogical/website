@@ -1,6 +1,18 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
+
+// Convert any title into a valid slug. "unforscene(instrumental)" → "unforscene-instrumental"
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/[^a-z0-9]+/g, "-")     // anything non-alphanumeric → hyphen
+    .replace(/^-+|-+$/g, "")         // trim leading/trailing hyphens
+    .replace(/-{2,}/g, "-")          // collapse repeats
+    .slice(0, 81);
+}
 
 // ─── Shared types (mirror Prisma row) ────────────────────────────────────────
 
@@ -225,6 +237,24 @@ function EntryForm({
 }) {
   const set = <K extends keyof AdminEntry>(k: K, v: AdminEntry[K]) => onChange({ ...entry, [k]: v });
 
+  // Track whether the user has manually edited the slug. While untouched,
+  // we re-derive the slug from the title on every keystroke. Once touched
+  // (or on existing entries), we stop auto-generating.
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(!isNew);
+
+  const onTitleChange = (newTitle: string) => {
+    if (slugManuallyEdited) {
+      onChange({ ...entry, title: newTitle });
+    } else {
+      onChange({ ...entry, title: newTitle, slug: slugify(newTitle) });
+    }
+  };
+
+  const onSlugChange = (newSlug: string) => {
+    setSlugManuallyEdited(true);
+    set("slug", slugify(newSlug));
+  };
+
   const toggleLink = (slug: string) => {
     const has = entry.links.includes(slug);
     set("links", has ? entry.links.filter((s) => s !== slug) : [...entry.links, slug]);
@@ -273,29 +303,34 @@ function EntryForm({
           />
         </label>
 
-        <label className="admin-field">
-          <span className="admin-label">Slug (kebab-case)</span>
-          <input
-            type="text"
-            className="admin-input admin-input--mono"
-            value={entry.slug}
-            onChange={(e) => set("slug", e.target.value.toLowerCase())}
-            placeholder="atomic-orbital-chips"
-            pattern="^[a-z0-9][a-z0-9-]*$"
-            required
-          />
-        </label>
-
         <label className="admin-field admin-field--full">
           <span className="admin-label">Title</span>
           <input
             type="text"
             className="admin-input"
             value={entry.title}
-            onChange={(e) => set("title", e.target.value)}
+            onChange={(e) => onTitleChange(e.target.value)}
             required
             maxLength={200}
+            autoFocus={isNew}
           />
+        </label>
+
+        <label className="admin-field admin-field--full">
+          <span className="admin-label">
+            Slug
+            {!slugManuallyEdited && <em className="admin-label-tag"> — auto from title</em>}
+          </span>
+          <input
+            type="text"
+            className="admin-input admin-input--mono"
+            value={entry.slug}
+            onChange={(e) => onSlugChange(e.target.value)}
+            placeholder="auto-generated from title"
+          />
+          <span className="admin-hint">
+            URL-safe identifier. Lowercase letters, digits, and hyphens only. Used for lineage links and stable URLs.
+          </span>
         </label>
 
         <label className="admin-field admin-field--full">

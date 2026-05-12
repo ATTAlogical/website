@@ -41,6 +41,8 @@ function stepPhysics(
   edges: Array<{ from: string; to: string }>,
   branches: Map<string, string>,
   t: number,
+  /** Force-intensity multiplier 0..1. At 1 = normal motion. At 0 = no new forces, existing velocity damps to rest. */
+  factor: number = 1,
 ) {
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
@@ -51,20 +53,21 @@ function stepPhysics(
     let fy = 0;
 
     // Centering toward origin (we render in coords centered on (0,0))
-    fx += -n.x * CENTER_K;
-    fy += -n.y * CENTER_K;
+    fx += -n.x * CENTER_K * factor;
+    fy += -n.y * CENTER_K * factor;
 
-    // Soft walls — quadratic pull-back beyond the safe zone, so nothing escapes
+    // Soft walls — quadratic pull-back beyond the safe zone, so nothing escapes.
+    // Walls run at full strength regardless of pause so layout never escapes.
     const overX = Math.max(0, Math.abs(n.x) - BOUND_X);
     const overY = Math.max(0, Math.abs(n.y) - BOUND_Y);
     if (overX > 0) fx -= Math.sign(n.x) * overX * WALL_K;
     if (overY > 0) fy -= Math.sign(n.y) * overY * WALL_K;
 
     // Ambient drift — two-frequency sine field so motion feels organic, not periodic
-    fx += Math.sin((t + n.seedX) * 0.0024) * DRIFT_K
-      + Math.sin((t + n.seedX) * 0.0061) * DRIFT_K * 0.4;
-    fy += Math.cos((t + n.seedY) * 0.0026) * DRIFT_K
-      + Math.cos((t + n.seedY) * 0.0067) * DRIFT_K * 0.4;
+    fx += (Math.sin((t + n.seedX) * 0.0024) * DRIFT_K
+      + Math.sin((t + n.seedX) * 0.0061) * DRIFT_K * 0.4) * factor;
+    fy += (Math.cos((t + n.seedY) * 0.0026) * DRIFT_K
+      + Math.cos((t + n.seedY) * 0.0067) * DRIFT_K * 0.4) * factor;
 
     n.vx = (n.vx + fx * STEP_DT) * DAMPING;
     n.vy = (n.vy + fy * STEP_DT) * DAMPING;
@@ -79,7 +82,7 @@ function stepPhysics(
       const dy = a.y - b.y;
       const distSq = dx * dx + dy * dy + 0.01;
       const dist = Math.sqrt(distSq);
-      const f = REPULSION_K / distSq;
+      const f = (REPULSION_K / distSq) * factor;
       const nx = dx / dist;
       const ny = dy / dist;
       a.vx += nx * f * STEP_DT;
@@ -103,7 +106,7 @@ function stepPhysics(
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
     const stretch = dist - rest;
-    const f = stretch * SPRING_K;
+    const f = stretch * SPRING_K * factor;
     const nx = dx / dist;
     const ny = dy / dist;
     a.vx += nx * f * STEP_DT;
@@ -129,6 +132,8 @@ function paintFrame(
     nodes: Map<string, SVGGElement>;
     edges: Map<string, SVGPathElement>;
   },
+  /** Wobble amplitude multiplier 0..1. At 0 = straight lines, no curve wobble. */
+  factor: number = 1,
 ) {
   // Nodes
   for (const n of nodes) {
@@ -151,9 +156,10 @@ function paintFrame(
     const nx = -dy / len; // perpendicular
     const ny = dx / len;
 
-    // Curve magnitude scales with edge length, modulated by independent sine phase
+    // Curve magnitude scales with edge length, modulated by independent sine phase.
+    // Multiplied by `factor` so wobble smoothly fades to a straight line on pause.
     const phase = (e.from.charCodeAt(0) + e.to.charCodeAt(0)) * 13.7;
-    const wobble = Math.sin((t + phase) * 0.0042) * Math.min(len * 0.18, 60);
+    const wobble = Math.sin((t + phase) * 0.0042) * Math.min(len * 0.18, 60) * factor;
 
     const mx = (from.x + to.x) / 2 + nx * wobble;
     const my = (from.y + to.y) / 2 + ny * wobble;
@@ -258,12 +264,14 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
   const physicsRef = useRef<PhysicsNode[]>([]);
   const rafRef = useRef<number>(0);
   const reducedMotion = useRef<boolean>(false);
-  /** Paused while the cursor is over a node — the field holds still so you can read it. */
+  /** Paused while the cursor is over a node — the field smoothly decelerates to a stop. */
   const pausedRef = useRef<boolean>(false);
   /** Counter so transitioning between adjacent nodes doesn't briefly resume. */
   const hoverCountRef = useRef<number>(0);
   /** Small delay before resume so mouseLeave → mouseEnter on adjacent node stays paused. */
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Smooth pause factor 0..1. Lerps toward target each frame so the freeze isn't abrupt. */
+  const factorRef = useRef<number>(1);
 
   const beginHoverPause = () => {
     if (resumeTimerRef.current) {
@@ -337,18 +345,32 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
     });
     setReady(true);
 
-    // Ambient loop — keeps the field alive, but pauses while the cursor is over the stage
+    // Ambient loop — smoothly ramps the motion-intensity factor 0..1 toward the
+    // target (0 when paused, 1 when free). Physics + paint always run, but
+    // multiplied by factor, so the field decelerates to a halt and accelerates
+    // back rather than freezing instantly.
     if (reducedMotion.current) return;
     let t = 240;
+    const RAMP_PER_FRAME = 0.06; // ~0.5s to reach target
     const tick = () => {
-      if (!pausedRef.current) {
-        stepPhysics(physicsRef.current, edges, branchMap, t);
-        paintFrame(physicsRef.current, edges, t, {
-          nodes: nodeRefs.current,
-          edges: edgeRefs.current,
-        });
-        t += 1;
-      }
+      const target = pausedRef.current ? 0 : 1;
+      const f = factorRef.current;
+      const next = Math.abs(target - f) < 0.005
+        ? target
+        : f + (target - f) * RAMP_PER_FRAME;
+      factorRef.current = next;
+
+      stepPhysics(physicsRef.current, edges, branchMap, t, next);
+      paintFrame(
+        physicsRef.current,
+        edges,
+        t,
+        { nodes: nodeRefs.current, edges: edgeRefs.current },
+        next,
+      );
+      // Advance time proportional to factor so the bezier phase decelerates too.
+      // Floor of 0 so when fully paused, t doesn't drift.
+      t += next;
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
