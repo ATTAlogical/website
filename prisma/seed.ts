@@ -6,6 +6,9 @@
 // After this runs once on a fresh DB, the database becomes the source of
 // truth. The TS file stays as a code-level fallback / git-tracked history.
 
+// Load .env into process.env before importing Prisma (which reads DATABASE_URL at construction)
+import "dotenv/config";
+
 import { PrismaClient } from "@prisma/client";
 import { LOG_ENTRIES } from "../src/data/log";
 import { fetchSpotifyMeta } from "../src/lib/spotify";
