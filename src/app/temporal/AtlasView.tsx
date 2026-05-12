@@ -47,23 +47,31 @@ function stepPhysics(
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
 
-  // Reset force accumulators (use velocity space directly)
-  for (const n of nodes) {
+  // Pre-compute which nodes are "collapsed children" — they have a parent and
+  // their parent isn't the currently-expanded one. Collapsed children sit on
+  // top of their parent (invisible via CSS); they shouldn't participate in any
+  // force loops or they'd explode each other.
+  const isCollapsed: boolean[] = new Array(nodes.length);
+  for (let i = 0; i < nodes.length; i++) {
+    const parentSlug = parentMap.get(nodes[i].slug);
+    isCollapsed[i] = !!parentSlug && parentSlug !== expandedParent;
+  }
+
+  // Per-node forces (centering, walls, drift, damping). Skip collapsed.
+  for (let i = 0; i < nodes.length; i++) {
+    if (isCollapsed[i]) continue;
+    const n = nodes[i];
     let fx = 0;
     let fy = 0;
 
-    // Centering toward origin (we render in coords centered on (0,0))
     fx += -n.x * CENTER_K * factor;
     fy += -n.y * CENTER_K * factor;
 
-    // Soft walls — quadratic pull-back beyond the safe zone, so nothing escapes.
-    // Walls run at full strength regardless of pause so layout never escapes.
     const overX = Math.max(0, Math.abs(n.x) - BOUND_X);
     const overY = Math.max(0, Math.abs(n.y) - BOUND_Y);
     if (overX > 0) fx -= Math.sign(n.x) * overX * WALL_K;
     if (overY > 0) fy -= Math.sign(n.y) * overY * WALL_K;
 
-    // Ambient drift — two-frequency sine field so motion feels organic, not periodic
     fx += (Math.sin((t + n.seedX) * 0.0024) * DRIFT_K
       + Math.sin((t + n.seedX) * 0.0061) * DRIFT_K * 0.4) * factor;
     fy += (Math.cos((t + n.seedY) * 0.0026) * DRIFT_K
@@ -73,14 +81,19 @@ function stepPhysics(
     n.vy = (n.vy + fy * STEP_DT) * DAMPING;
   }
 
-  // Pairwise repulsion — O(n²) is fine for n ~12
+  // Pairwise repulsion — skip collapsed nodes entirely. Distance is clamped
+  // so very-close pairs (which can happen during expand transition) don't
+  // create explosive forces.
+  const MIN_DIST_SQ = 100;
   for (let i = 0; i < nodes.length; i++) {
+    if (isCollapsed[i]) continue;
     for (let j = i + 1; j < nodes.length; j++) {
+      if (isCollapsed[j]) continue;
       const a = nodes[i];
       const b = nodes[j];
       const dx = a.x - b.x;
       const dy = a.y - b.y;
-      const distSq = dx * dx + dy * dy + 0.01;
+      const distSq = Math.max(MIN_DIST_SQ, dx * dx + dy * dy);
       const dist = Math.sqrt(distSq);
       const f = (REPULSION_K / distSq) * factor;
       const nx = dx / dist;
@@ -92,16 +105,16 @@ function stepPhysics(
     }
   }
 
-  // Springs along edges
+  // Edge springs — skip any edge that touches a collapsed node
   for (const edge of edges) {
     const i = byIndex.get(edge.from);
     const j = byIndex.get(edge.to);
     if (i === undefined || j === undefined) continue;
+    if (isCollapsed[i] || isCollapsed[j]) continue;
     const a = nodes[i];
     const b = nodes[j];
     const sameBranch = branches.get(edge.from) === branches.get(edge.to);
     const rest = sameBranch ? SPRING_REST / SAME_BRANCH_BONUS : SPRING_REST;
-
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
@@ -115,35 +128,48 @@ function stepPhysics(
     b.vy -= ny * f * STEP_DT;
   }
 
-  // Parent-spring: pull child nodes toward their parent's position.
-  // Rest distance = 0 when collapsed (children sit on top of parent, hidden by
-  // CSS visibility). Rest = 80 when this child's parent is currently expanded
-  // so children form a tight orbit around the parent.
+  // Parent-spring: only for ACTIVE (currently-expanded) children. Pulls them
+  // outward to rest=80 around their parent. Collapsed children are snapped
+  // to parent's position in the integration step below — they don't need
+  // physics.
   const PARENT_SPRING_K = 0.06;
   const EXPANDED_REST = 80;
   for (const [childSlug, parentSlug] of parentMap.entries()) {
     const ci = byIndex.get(childSlug);
+    if (ci === undefined || isCollapsed[ci]) continue;
     const pi = byIndex.get(parentSlug);
-    if (ci === undefined || pi === undefined) continue;
+    if (pi === undefined) continue;
     const child = nodes[ci];
     const parent = nodes[pi];
     const dx = parent.x - child.x;
     const dy = parent.y - child.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-    const rest = parentSlug === expandedParent ? EXPANDED_REST : 0;
-    const stretch = dist - rest;
+    const stretch = dist - EXPANDED_REST;
     const f = stretch * PARENT_SPRING_K;
     const nx = dx / dist;
     const ny = dy / dist;
     child.vx += nx * f;
     child.vy += ny * f;
-    // Don't push the parent — it's the anchor
   }
 
-  // Integrate
-  for (const n of nodes) {
-    n.x += n.vx;
-    n.y += n.vy;
+  // Integrate. Collapsed children get snapped to parent (no momentum).
+  // Active nodes integrate normally.
+  for (let i = 0; i < nodes.length; i++) {
+    if (isCollapsed[i]) {
+      const parentSlug = parentMap.get(nodes[i].slug);
+      if (parentSlug) {
+        const pi = byIndex.get(parentSlug);
+        if (pi !== undefined) {
+          nodes[i].x = nodes[pi].x;
+          nodes[i].y = nodes[pi].y;
+          nodes[i].vx = 0;
+          nodes[i].vy = 0;
+        }
+      }
+    } else {
+      nodes[i].x += nodes[i].vx;
+      nodes[i].y += nodes[i].vy;
+    }
   }
 }
 
