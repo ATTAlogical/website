@@ -140,12 +140,15 @@ function stepPhysics(
   }
 
   // Parent-spring: only for ACTIVE (currently-expanded) children. The rest
-  // length is ramped 0 → EXPANDED_REST over ~0.6s so children spread outward
-  // gradually instead of shooting on instant hover. K is small so the spring
-  // is gentle even at full rest.
-  const PARENT_SPRING_K = 0.018;
+  // length is ramped 0 → EXPANDED_REST over ~0.6s. K is gentle; we also
+  // apply spring-axis damping (Hooke + velocity-proportional resistance)
+  // so children critically-damp toward the rest length instead of
+  // oscillating around it.
+  const PARENT_SPRING_K = 0.012;
   const EXPANDED_REST = 70;
-  const MAX_CHILD_SPEED = 4; // px/frame cap so they can't shoot too fast
+  // Critical damping coefficient ≈ 2√K. Slightly over-damped to absorb any
+  // residual velocity from quick hover bounces between albums.
+  const SPRING_AXIAL_DAMP = 0.32;
   const restNow = EXPANDED_REST * expandFactor;
   for (const [childSlug, parentSlug] of parentMap.entries()) {
     const ci = byIndex.get(childSlug);
@@ -157,19 +160,18 @@ function stepPhysics(
     const dx = parent.x - child.x;
     const dy = parent.y - child.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-    const stretch = dist - restNow;
-    const f = stretch * PARENT_SPRING_K;
     const nx = dx / dist;
     const ny = dy / dist;
+    // Hooke restoring force
+    const stretch = dist - restNow;
+    const f = stretch * PARENT_SPRING_K;
     child.vx += nx * f;
     child.vy += ny * f;
-    // Hard-cap velocity so even a freshly-released child can't shoot
-    const speed = Math.sqrt(child.vx * child.vx + child.vy * child.vy);
-    if (speed > MAX_CHILD_SPEED) {
-      const k = MAX_CHILD_SPEED / speed;
-      child.vx *= k;
-      child.vy *= k;
-    }
+    // Velocity component along the spring axis (positive = moving toward parent)
+    const vRadial = nx * child.vx + ny * child.vy;
+    // Damping force opposes radial velocity component → kills oscillation along spring
+    child.vx -= nx * vRadial * SPRING_AXIAL_DAMP;
+    child.vy -= ny * vRadial * SPRING_AXIAL_DAMP;
   }
 
   // Integrate. Collapsed children snap to parent + a deterministic tiny radial
@@ -303,6 +305,9 @@ export default function AtlasView({
    *  Otherwise ramps toward 0. Multiplies parent-spring rest length so children
    *  spread outward gradually instead of shooting out on instant hover. */
   const expandFactorRef = useRef<number>(0);
+  /** Previous hovered slug — used to reset expandFactor on hover-to-different-album
+   *  transitions so the new children start fresh from collapsed. */
+  const prevHoveredRef = useRef<string | null>(null);
 
   const beginHoverPause = () => {
     if (resumeTimerRef.current) {
@@ -420,9 +425,17 @@ export default function AtlasView({
       factorRef.current = next;
 
       // Ramp expansion factor: 1 when a parent with children is hovered, 0 otherwise.
-      // We don't know which slugs have children here, but the spring force has zero
-      // effect on parentless nodes anyway — the factor just gates the rest length.
-      const expandTarget = hoveredRef.current ? 1 : 0;
+      // When the hovered slug changes from one parent to ANOTHER (not just on/off),
+      // reset the factor to 0 so the new children start fresh from collapsed instead
+      // of inheriting the previous album's full expansion.
+      const currHover = hoveredRef.current;
+      const prevHover = prevHoveredRef.current;
+      if (currHover !== prevHover && currHover && prevHover) {
+        expandFactorRef.current = 0;
+      }
+      prevHoveredRef.current = currHover;
+
+      const expandTarget = currHover ? 1 : 0;
       const ef = expandFactorRef.current;
       const efNext = Math.abs(expandTarget - ef) < 0.005
         ? expandTarget
