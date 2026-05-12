@@ -14,11 +14,7 @@ export default async function TemporalPage() {
   ]);
 
   // Shape into the existing LogEntry type (the view code already understands this shape)
-  const entries: (LogEntry & {
-    spotifyUrl?: string | null;
-    spotifyTitle?: string | null;
-    spotifyThumb?: string | null;
-  })[] = rows.map((r) => ({
+  const entries = rows.map((r) => ({
     slug: r.slug,
     date: r.date.toISOString().slice(0, 10),
     branch: r.branch as LogEntry["branch"],
@@ -31,6 +27,16 @@ export default async function TemporalPage() {
     spotifyUrl: r.spotifyUrl,
     spotifyTitle: r.spotifyTitle,
     spotifyThumb: r.spotifyThumb,
+    spotifyDurationMs: r.spotifyDurationMs,
+    spotifyReleaseDate: r.spotifyReleaseDate,
+    spotifyArtist: r.spotifyArtist,
+    spotifyAlbum: r.spotifyAlbum,
+    spotifyPreviewUrl: r.spotifyPreviewUrl,
+    spotifyPopularity: r.spotifyPopularity,
+    spotifyTempo: r.spotifyTempo,
+    spotifyEnergy: r.spotifyEnergy,
+    spotifyValence: r.spotifyValence,
+    spotifyDanceability: r.spotifyDanceability,
   }));
 
   return (
@@ -43,7 +49,11 @@ export default async function TemporalPage() {
         <LiveTimestamp />
       </header>
 
-      <TemporalClient entries={entries} spotifyProfile={settings?.spotifyProfile ?? null} />
+      <TemporalClient
+        entries={entries}
+        spotifyProfile={settings?.spotifyProfile ?? null}
+        showVanity={settings?.showSpotifyVanity ?? false}
+      />
     </main>
   );
 }

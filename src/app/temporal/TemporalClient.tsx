@@ -11,14 +11,26 @@ export type TemporalEntry = LogEntry & {
   spotifyUrl?: string | null;
   spotifyTitle?: string | null;
   spotifyThumb?: string | null;
+  spotifyDurationMs?: number | null;
+  spotifyReleaseDate?: string | null;
+  spotifyArtist?: string | null;
+  spotifyAlbum?: string | null;
+  spotifyPreviewUrl?: string | null;
+  spotifyPopularity?: number | null;
+  spotifyTempo?: number | null;
+  spotifyEnergy?: number | null;
+  spotifyValence?: number | null;
+  spotifyDanceability?: number | null;
 };
 
 export default function TemporalClient({
   entries,
   spotifyProfile,
+  showVanity,
 }: {
   entries: TemporalEntry[];
   spotifyProfile?: string | null;
+  showVanity?: boolean;
 }) {
   const isMobile = useIsMobile();
 
@@ -42,7 +54,11 @@ export default function TemporalClient({
     <>
       {isMobile ? <CardDeckView entries={entries} /> : <AtlasView entries={entries} />}
       {showSidebar && (
-        <MusicSidebar entries={ckoreWithSpotify} spotifyProfile={spotifyProfile} />
+        <MusicSidebar
+          entries={ckoreWithSpotify}
+          spotifyProfile={spotifyProfile}
+          showVanity={showVanity}
+        />
       )}
     </>
   );

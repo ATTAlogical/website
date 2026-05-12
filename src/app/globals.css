@@ -1405,6 +1405,50 @@ body::after {
    in log.ts) and don't need extra motion. A CSS pulse animation on top of the
    physics caused the dot to drift while edges stayed put. Removed. */
 
+/* BPM-driven node pulse — CKORE tracks only.
+   transform-box: fill-box pins origin to the circle's own bounding box.
+   The <g> is JS-translated to its physics position; the circle inside scales
+   around its local (0,0) which IS the bounding-box center. No drift. */
+@keyframes atlas-pulse-normal {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+@keyframes atlas-pulse-strong {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.10); }
+}
+@keyframes atlas-pulse-weak {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+.atlas-node--pulse-normal .atlas-node-dot,
+.atlas-node--pulse-strong .atlas-node-dot,
+.atlas-node--pulse-weak .atlas-node-dot {
+  animation-duration: var(--bpm-duration, 0ms);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+.atlas-node--pulse-normal .atlas-node-dot { animation-name: atlas-pulse-normal; }
+.atlas-node--pulse-strong .atlas-node-dot { animation-name: atlas-pulse-strong; }
+.atlas-node--pulse-weak .atlas-node-dot   { animation-name: atlas-pulse-weak; }
+
+/* Mood-tinted glow ring — quietly modulates the existing hover glow when set */
+.atlas-node--mood .atlas-node-glow {
+  fill: var(--mood-color, currentColor);
+}
+.atlas-node--mood:not(.atlas-node--hovered):not(.atlas-node--active) .atlas-node-glow {
+  opacity: 0.06;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-node--pulse-normal .atlas-node-dot,
+  .atlas-node--pulse-strong .atlas-node-dot,
+  .atlas-node--pulse-weak .atlas-node-dot { animation: none; }
+}
+
 /* Node label */
 .atlas-node-label {
   font-family: "Playfair Display", serif;
@@ -2210,44 +2254,149 @@ textarea.admin-input { resize: vertical; min-height: 60px; line-height: 1.5; }
   transition: color 0.15s;
 }
 .music-sidebar-profile:hover { color: oklch(10% 0.005 255); }
+/* Music row — track in the sidebar */
 .music-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 9px;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
   align-items: center;
   text-decoration: none;
   color: inherit;
-  padding: 5px 4px;
-  border-radius: 3px;
-  transition: background 0.15s;
+  padding: 6px 6px 14px; /* extra bottom for reflection space */
+  border-radius: 4px;
+  transition: background 0.18s ease;
+  isolation: isolate;
 }
-.music-row:hover { background: oklch(96% 0.005 255); }
+.music-row:hover { background: oklch(96% 0.006 255); }
+
+/* Mood-tinted glow halo — sits behind the row. Color comes from --mood-color
+   set inline per track based on Spotify valence/energy. */
+.music-row-glow {
+  position: absolute;
+  inset: -2px -6px 4px -6px;
+  background: var(--mood-color, transparent);
+  filter: blur(14px);
+  opacity: 0;
+  border-radius: 14px;
+  z-index: -1;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.music-row:hover .music-row-glow {
+  opacity: 0.18;
+}
+
+/* Cover wrap holds the image and its reflection. */
+.music-row-cover-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
 .music-row-cover {
-  width: 36px;
-  height: 36px;
-  border-radius: 3px;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
   object-fit: cover;
   display: block;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5);
 }
+.music-row-cover--placeholder {
+  background: oklch(94% 0.005 255);
+}
+
+/* Glass reflection — flipped cover image, fading out, below the row's cover. */
+.music-row-cover-reflection {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 0 0 4px 4px;
+  object-fit: cover;
+  object-position: top;
+  transform: scaleY(-1) translateY(0.5px);
+  opacity: 0.32;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent 80%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent 80%);
+  pointer-events: none;
+  filter: blur(0.3px);
+}
+
 .music-row-meta {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 1px;
 }
 .music-row-title {
   font-family: "Playfair Display", serif;
   font-size: 12.5px;
   color: oklch(10% 0.005 255);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.music-row-date {
+.music-row-line2 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9.5px;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.42);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.music-row-sep { opacity: 0.45; }
+.music-row-stat { letter-spacing: 0.02em; }
+
+/* BPM-driven pulse: tempo applied as CSS variable. Amplitude varies with hover state. */
+@keyframes music-row-pulse-normal {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+@keyframes music-row-pulse-strong {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+@keyframes music-row-pulse-weak {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.004); }
+}
+.music-row--has-bpm .music-row-cover {
+  animation-duration: var(--bpm-duration, 0ms);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  will-change: transform;
+}
+.music-row--has-bpm.music-row--pulse-normal .music-row-cover {
+  animation-name: music-row-pulse-normal;
+}
+.music-row--has-bpm.music-row--pulse-strong .music-row-cover {
+  animation-name: music-row-pulse-strong;
+}
+.music-row--has-bpm.music-row--pulse-weak .music-row-cover {
+  animation-name: music-row-pulse-weak;
+}
+
+/* Reduced motion — kill the pulse */
+@media (prefers-reduced-motion: reduce) {
+  .music-row--has-bpm .music-row-cover { animation: none; }
+}
+
+/* Admin info banner (used by settings page for import results) */
+.admin-info {
+  background: oklch(95% 0.04 145);
+  border: 0.5px solid oklch(75% 0.10 145);
+  color: oklch(35% 0.13 145);
+  padding: 10px 14px;
+  border-radius: 3px;
+  margin-bottom: 18px;
+  font-size: 13px;
 }
 
 /* Inline in card deck rows (mobile) */

@@ -185,6 +185,14 @@ type EntryWithSpotify = LogEntry & {
   spotifyUrl?: string | null;
   spotifyTitle?: string | null;
   spotifyThumb?: string | null;
+  spotifyDurationMs?: number | null;
+  spotifyReleaseDate?: string | null;
+  spotifyArtist?: string | null;
+  spotifyAlbum?: string | null;
+  spotifyPreviewUrl?: string | null;
+  spotifyTempo?: number | null;
+  spotifyEnergy?: number | null;
+  spotifyValence?: number | null;
 };
 
 function DetailPanel({
@@ -431,8 +439,33 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
             const isActive = activeSet ? activeSet.has(entry.slug) : false;
             const isDim = activeSet ? !isActive : false;
             const isHovered = hovered === entry.slug;
+            const isSomeoneElseHovered = hovered !== null && !isHovered;
             const isSelected = selected?.slug === entry.slug;
             const radius = 6 + (TYPE_WEIGHT[entry.type] ?? 1) * 3;
+
+            // BPM-driven pulse — CKORE tracks only, when tempo is known
+            const bpm = entry.spotifyTempo;
+            const hasBpm = bpm && bpm > 30;
+            const bpmDurationMs = hasBpm
+              ? Math.round(60000 / Math.max(40, Math.min(220, bpm)))
+              : 0;
+            const pulseClass = !hasBpm
+              ? null
+              : isHovered ? "atlas-node--pulse-strong"
+              : isSomeoneElseHovered ? "atlas-node--pulse-weak"
+              : "atlas-node--pulse-normal";
+
+            // Mood-derived halo color (valence + energy)
+            const v = entry.spotifyValence;
+            const e = entry.spotifyEnergy;
+            const moodColor = (v != null && e != null)
+              ? `oklch(${60 + e * 12}% ${0.07 + e * 0.07} ${250 - v * 190})`
+              : null;
+
+            const groupStyle = {} as Record<string, string>;
+            if (hasBpm) groupStyle["--bpm-duration"] = `${bpmDurationMs}ms`;
+            if (moodColor) groupStyle["--mood-color"] = moodColor;
+
             return (
               <g
                 key={entry.slug}
@@ -444,11 +477,14 @@ export default function AtlasView({ entries }: { entries: EntryWithSpotify[] }) 
                   "atlas-node",
                   `atlas-node--${entry.branch}`,
                   `atlas-node--${entry.type}`,
+                  pulseClass,
+                  moodColor && "atlas-node--mood",
                   isActive && "atlas-node--active",
                   isDim && "atlas-node--dim",
                   isHovered && "atlas-node--hovered",
                   isSelected && "atlas-node--selected",
                 ].filter(Boolean).join(" ")}
+                style={groupStyle as React.CSSProperties}
                 tabIndex={0}
                 role="button"
                 aria-label={`${entry.title}, ${entry.date}`}

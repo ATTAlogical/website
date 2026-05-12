@@ -41,6 +41,26 @@ model LogEntry {
   spotifyTitle String?
   /// Cached oEmbed album-art thumbnail URL.
   spotifyThumb String?
+  /// Spotify Web API: track duration in milliseconds.
+  spotifyDurationMs Int?
+  /// Spotify Web API: release date string ("YYYY-MM-DD", "YYYY-MM", or "YYYY").
+  spotifyReleaseDate String?
+  /// Spotify Web API: primary artist name (comma-joined when multiple).
+  spotifyArtist String?
+  /// Spotify Web API: album name.
+  spotifyAlbum String?
+  /// Spotify Web API: 30s mp3 preview URL (may be null for some tracks).
+  spotifyPreviewUrl String?
+  /// Spotify Audio Features: tempo in BPM.
+  spotifyTempo Float?
+  /// Spotify Audio Features: 0..1, intensity.
+  spotifyEnergy Float?
+  /// Spotify Audio Features: 0..1, musical positiveness (sad → happy).
+  spotifyValence Float?
+  /// Spotify Audio Features: 0..1, danceability.
+  spotifyDanceability Float?
+  /// Spotify Web API: popularity 0..100 (only surfaced when admin toggle is on).
+  spotifyPopularity Int?
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -55,7 +75,12 @@ model LogEntry {
 
 model SiteSettings {
   id              Int      @id @default(1)
-  /// Spotify artist/user profile URL — surfaces in the ATTLAS music sidebar.
+  /// Spotify artist/user profile URL — surfaces in the ATTLAS music sidebar header.
   spotifyProfile  String?
+  /// Spotify artist ID — drives auto-import of the whole discography.
+  spotifyArtistId String?
+  /// When true, surface follower count / popularity / monthly listeners on /temporal.
+  /// Default false — vanity metrics off until Boelie wants them on.
+  showSpotifyVanity Boolean @default(false)
   updatedAt       DateTime @updatedAt
 }

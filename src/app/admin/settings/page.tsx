@@ -9,6 +9,8 @@ export default async function AdminSettingsPage() {
     <SettingsManager
       initial={{
         spotifyProfile: row?.spotifyProfile ?? "",
+        spotifyArtistId: row?.spotifyArtistId ?? "",
+        showSpotifyVanity: row?.showSpotifyVanity ?? false,
       }}
     />
   );

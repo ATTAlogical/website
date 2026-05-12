@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchSpotifyMeta } from "@/lib/spotify";
+import { fetchSpotifyMetaFull } from "@/lib/spotifyApi";
 import { parseEntryInput } from "../route";
 
 // PUT — update an entry
@@ -28,16 +28,49 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Refresh Spotify metadata only if URL changed and branch is ckore
-  let spotifyTitle = existing.spotifyTitle;
-  let spotifyThumb = existing.spotifyThumb;
+  // Refresh full Spotify metadata when:
+  //  - branch becomes non-ckore or URL is removed → null everything
+  //  - URL changed → refetch all
+  //  - otherwise → keep existing cached values
+  let spotifyFields: Partial<{
+    spotifyTitle: string | null;
+    spotifyThumb: string | null;
+    spotifyDurationMs: number | null;
+    spotifyReleaseDate: string | null;
+    spotifyArtist: string | null;
+    spotifyAlbum: string | null;
+    spotifyPreviewUrl: string | null;
+    spotifyPopularity: number | null;
+    spotifyTempo: number | null;
+    spotifyEnergy: number | null;
+    spotifyValence: number | null;
+    spotifyDanceability: number | null;
+  }> = {};
+
   if (parsed.data.branch !== "ckore" || !parsed.data.spotifyUrl) {
-    spotifyTitle = null;
-    spotifyThumb = null;
+    spotifyFields = {
+      spotifyTitle: null, spotifyThumb: null,
+      spotifyDurationMs: null, spotifyReleaseDate: null,
+      spotifyArtist: null, spotifyAlbum: null, spotifyPreviewUrl: null,
+      spotifyPopularity: null, spotifyTempo: null, spotifyEnergy: null,
+      spotifyValence: null, spotifyDanceability: null,
+    };
   } else if (parsed.data.spotifyUrl !== existing.spotifyUrl) {
-    const meta = await fetchSpotifyMeta(parsed.data.spotifyUrl);
-    spotifyTitle = meta?.title ?? null;
-    spotifyThumb = meta?.thumbnail ?? null;
+    const meta = await fetchSpotifyMetaFull(parsed.data.spotifyUrl);
+    spotifyFields = {
+      spotifyTitle: meta?.title ?? null,
+      spotifyThumb: meta?.thumbnail ?? null,
+      spotifyDurationMs: meta?.durationMs ?? null,
+      spotifyReleaseDate: meta?.releaseDate ?? null,
+      spotifyArtist: meta?.artist ?? null,
+      spotifyAlbum: meta?.album ?? null,
+      spotifyPreviewUrl: meta?.previewUrl ?? null,
+      spotifyPopularity: meta?.popularity ?? null,
+      spotifyTempo: meta?.tempo ?? null,
+      spotifyEnergy: meta?.energy ?? null,
+      spotifyValence: meta?.valence ?? null,
+      spotifyDanceability: meta?.danceability ?? null,
+    };
   }
 
   const updated = await prisma.logEntry.update({
@@ -45,8 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     data: {
       ...parsed.data,
       date: new Date(parsed.data.date),
-      spotifyTitle,
-      spotifyThumb,
+      ...spotifyFields,
     },
   });
 

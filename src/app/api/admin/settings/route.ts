@@ -44,10 +44,26 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  // Spotify Artist ID — optional, used for auto-import
+  const rawArtistId = body.spotifyArtistId;
+  let spotifyArtistId: string | null = null;
+  if (typeof rawArtistId === "string" && rawArtistId.trim()) {
+    const candidate = rawArtistId.trim();
+    if (!/^[A-Za-z0-9]{16,40}$/.test(candidate)) {
+      return NextResponse.json(
+        { error: "Spotify Artist ID must be alphanumeric (typically 22 chars)" },
+        { status: 400 },
+      );
+    }
+    spotifyArtistId = candidate;
+  }
+
+  const showSpotifyVanity = Boolean(body.showSpotifyVanity);
+
   const settings = await prisma.siteSettings.upsert({
     where: { id: SETTINGS_ID },
-    update: { spotifyProfile },
-    create: { id: SETTINGS_ID, spotifyProfile },
+    update: { spotifyProfile, spotifyArtistId, showSpotifyVanity },
+    create: { id: SETTINGS_ID, spotifyProfile, spotifyArtistId, showSpotifyVanity },
   });
 
   return NextResponse.json({ settings });

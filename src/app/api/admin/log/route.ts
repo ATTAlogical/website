@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchSpotifyMeta } from "@/lib/spotify";
+import { fetchSpotifyMetaFull } from "@/lib/spotifyApi";
 
 const VALID_BRANCHES = ["atta", "laugical", "ckore"] as const;
 const VALID_TYPES = ["build", "project", "track", "drop", "note", "milestone"] as const;
@@ -34,10 +34,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Slug "${parsed.data.slug}" is already in use` }, { status: 409 });
   }
 
-  // Fetch Spotify metadata if applicable
-  const spotify = parsed.data.branch === "ckore" && parsed.data.spotifyUrl
-    ? await fetchSpotifyMeta(parsed.data.spotifyUrl)
-    : null;
+  // Fetch full Spotify metadata if applicable (CKORE + URL provided)
+  const spotify =
+    parsed.data.branch === "ckore" && parsed.data.spotifyUrl
+      ? await fetchSpotifyMetaFull(parsed.data.spotifyUrl)
+      : null;
 
   const created = await prisma.logEntry.create({
     data: {
@@ -45,6 +46,16 @@ export async function POST(req: NextRequest) {
       date: new Date(parsed.data.date),
       spotifyTitle: spotify?.title ?? null,
       spotifyThumb: spotify?.thumbnail ?? null,
+      spotifyDurationMs: spotify?.durationMs ?? null,
+      spotifyReleaseDate: spotify?.releaseDate ?? null,
+      spotifyArtist: spotify?.artist ?? null,
+      spotifyAlbum: spotify?.album ?? null,
+      spotifyPreviewUrl: spotify?.previewUrl ?? null,
+      spotifyPopularity: spotify?.popularity ?? null,
+      spotifyTempo: spotify?.tempo ?? null,
+      spotifyEnergy: spotify?.energy ?? null,
+      spotifyValence: spotify?.valence ?? null,
+      spotifyDanceability: spotify?.danceability ?? null,
     },
   });
 
