@@ -902,11 +902,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = showExtended ? "auto" : "";
-    document.documentElement.style.overflow = showExtended ? "auto" : "";
-    document.body.style.height = showExtended ? "auto" : "";
-    document.documentElement.style.height = showExtended ? "auto" : "";
-  }, [showExtended]);
+    // Mobile always scrolls. Desktop only scrolls when the page has been extended
+    // (logical chip unlock) — otherwise the planetarium hero stays locked.
+    const shouldScroll = isMobile || showExtended;
+    document.body.style.overflow = shouldScroll ? "auto" : "";
+    document.documentElement.style.overflow = shouldScroll ? "auto" : "";
+    document.body.style.height = shouldScroll ? "auto" : "";
+    document.documentElement.style.height = shouldScroll ? "auto" : "";
+  }, [showExtended, isMobile]);
 
   useEffect(() => {
     if (!scrollToWork || !showExtended) return;
@@ -1186,12 +1189,6 @@ export default function Home() {
         {isMobile ? (
           /* ── MOBILE BROADSHEET ── editorial single-column. Not a rearranged desktop. */
           <>
-            {/* Masthead */}
-            <header className="m-masthead">
-              <span className="m-masthead-mark" aria-hidden>ATTA · logical</span>
-              <MobileLiveStamp />
-            </header>
-
             {/* Lede — large editorial italic phrase */}
             <div className="m-lede">
               <h1 className="m-lede-title glossy-text-shadow">
@@ -1267,82 +1264,6 @@ export default function Home() {
                 </li>
               </ol>
             </nav>
-
-            {/* Quiet hint */}
-            <p className="m-hint">
-              <em>type below to inquire. answers route inline.</em>
-            </p>
-
-            {/* Bottom-fixed search + chip pill */}
-            <div className="m-search-dock">
-              {/* Inline chip pill — replaces the orbital chip behavior on mobile.
-                  Appears above the search after a resolution; tap to navigate. */}
-              <div className="m-chip-pill-zone">
-                <AnimatePresence mode="popLayout">
-                  {chips.filter(ch => ch.shell === 0 && ch.state !== "exiting").slice(-1).map(chip => (
-                    <motion.button
-                      key={chip.id}
-                      className="m-chip-pill"
-                      initial={{ y: 12, opacity: 0, scale: 0.96 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      exit={{ y: -8, opacity: 0, scale: 0.96 }}
-                      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-                      onClick={() => handleChipClick(chip.label, chip.href, chip.section)}
-                    >
-                      {chip.label}
-                      <span className="m-chip-pill-arrow" aria-hidden>→</span>
-                    </motion.button>
-                  ))}
-                </AnimatePresence>
-              </div>
-
-              <div className="m-search">
-                <span aria-hidden className="m-search-placeholder" style={{
-                  opacity: placeholderVisible ? 1 : 0,
-                }}>
-                  {typedPlaceholder}
-                </span>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchValue}
-                  onChange={e => setSearchValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key !== "Enter") return;
-                    const q = searchValue.trim();
-                    if (LANG_NL.includes(q)) { setLang("nl"); setSearchValue(""); return; }
-                    if (LANG_EN.includes(q)) { setLang("en"); setSearchValue(""); return; }
-                    setSubmittedQuery(prev => ({ value: searchValue, nonce: (prev?.nonce ?? 0) + 1 }));
-                    setSearchValue("");
-                  }}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="m-search-input"
-                  style={{
-                    borderBottomColor: isAiLoading ? "rgba(80,190,255,0.45)" : "rgba(0,0,0,0.18)",
-                  }}
-                />
-                <AnimatePresence>
-                  {isAiLoading && (
-                    <motion.div key="water-m-bs"
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="m-search-water"
-                    >
-                      <div className="water-flow" style={{
-                        position: "absolute", inset: 0,
-                        background: "linear-gradient(90deg, transparent 0%, rgba(80,190,255,0.5) 35%, rgba(160,230,255,0.9) 50%, rgba(80,190,255,0.5) 65%, transparent 100%)",
-                        backgroundSize: "50% 100%",
-                      }} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
 
             {/* Contact email — surfaces only after engagement (preserves easter-egg behavior) */}
             <div

@@ -947,8 +947,7 @@ body::after {
   width: 100%;
   min-height: 100svh;
   overflow: visible;
-  /* Inner padding bottom reserves space for the fixed search dock */
-  padding-bottom: 140px;
+  padding-bottom: 6vh;
   --m-col: clamp(20px, 6vw, 36px);
 }
 
