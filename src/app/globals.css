@@ -1287,22 +1287,34 @@ body::after {
   padding: 72px 32px 56px;
 }
 
-/* ── Avatar wheel ── */
+/* ── Avatar cluster (mockup feel: overlapping circles, not a clean list) ── */
 .wii-avatars {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   flex-shrink: 0;
+  padding: 6px 4px;
 }
 .wii-avatars-label {
   font-family: "Playfair Display", serif;
   font-weight: 700;
+  font-style: italic;
   font-size: 14px;
   letter-spacing: 0.16em;
   color: var(--about-text);
+  margin-top: 8px;
+}
+.wii-avatar-cluster {
+  position: relative;
+  width: 78px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .wii-avatar-circle {
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1313,14 +1325,28 @@ body::after {
   font-style: italic;
   font-weight: 700;
   font-size: 24px;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   box-shadow:
-    inset 0 2px 4px rgba(255, 255, 255, 0.4),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.12),
-    0 4px 10px rgba(0, 0, 0, 0.08);
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
+    inset 0 2px 4px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15),
+    0 4px 10px rgba(0, 0, 0, 0.10);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
   user-select: none;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+.wii-avatar-circle--active {
+  width: 78px;
+  height: 78px;
+  font-size: 30px;
+  box-shadow:
+    inset 0 2px 5px rgba(255, 255, 255, 0.55),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.18),
+    0 0 0 3px rgba(0, 154, 224, 0.45),
+    0 6px 16px rgba(0, 85, 165, 0.18);
+  cursor: default;
 }
 
 /* ── Wheel (shared by avatars + options) ── */
@@ -1404,27 +1430,35 @@ body::after {
 }
 .about-panel-title {
   font-family: "Playfair Display", serif;
-  font-weight: 800;
-  font-size: clamp(2.2rem, 5vw, 3rem);
-  letter-spacing: 0.02em;
-  line-height: 1;
+  font-weight: 900;
+  font-size: clamp(2.6rem, 6vw, 4rem);
+  letter-spacing: 0.04em;
+  line-height: 0.95;
   color: var(--about-text);
   margin: 0;
+  /* Chunky balloon-letter feel: dual shadow gives a soft 3D lift without going gimmicky */
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(0, 85, 165, 0.12),
+    0 6px 14px rgba(0, 85, 165, 0.10);
 }
 
-/* Options widget (label + wheel) */
+/* Options widget — compact tab-style box in the panel's top-right corner */
 .about-options {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  background: linear-gradient(180deg, #fbfeff 0%, #eaf2fa 100%);
-  border-radius: 18px;
-  border: 1px solid rgba(0, 85, 165, 0.1);
+  gap: 4px;
+  padding: 8px 10px 10px;
+  background: linear-gradient(180deg, #fbfeff 0%, #e6eef8 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 85, 165, 0.14);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 2px 6px rgba(0, 0, 0, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 85, 165, 0.06),
+    0 3px 8px rgba(0, 85, 165, 0.08);
+  min-width: 130px;
+  flex-shrink: 0;
 }
 .about-options-label {
   font-family: var(--font-geist-sans), -apple-system, sans-serif;
@@ -1456,15 +1490,26 @@ body::after {
 }
 .about-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr);
+  gap: 22px;
   align-items: stretch;
 }
+.about-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  min-height: 100%;
+}
+.about-left-col > .about-card {
+  flex: 1 1 0;
+  min-height: 0;
+}
 
-/* Cards 1 & 2 */
+/* Cards 1 & 2 — chunky Wii-feel: bigger radius, stronger bevel, lifted */
 .about-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f6fafd 100%);
-  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f3f9fd 100%);
+  border-radius: 22px;
   padding: 18px 18px 20px;
   border: 1px solid rgba(0, 85, 165, 0.08);
   box-shadow:

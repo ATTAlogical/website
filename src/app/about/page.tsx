@@ -235,27 +235,67 @@ const AVATARS = [
 ];
 
 function AvatarWheel() {
-  const [active, setActive] = useState<string>(AVATARS[0].id);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const len = AVATARS.length;
+
+  const cycle = (delta: number) => {
+    setActiveIndex((i) => (i + delta + len) % len);
+  };
+
+  function offsetOf(i: number): number {
+    let d = i - activeIndex;
+    if (d > len / 2) d -= len;
+    if (d < -len / 2) d += len;
+    return d;
+  }
+
   return (
     <div className="wii-avatars">
-      <Wheel
-        items={AVATARS.map((a) => a.id)}
-        value={active}
-        onChange={setActive}
-        ariaLabel="ATTA avatars"
-        itemLabel={(id) => {
-          const av = AVATARS.find((a) => a.id === id)!;
+      <button
+        type="button"
+        className="wii-wheel-arrow"
+        onClick={() => cycle(-1)}
+        aria-label="previous avatar"
+      >
+        ▲
+      </button>
+      <div className="wii-avatar-cluster" role="listbox" aria-label="ATTA avatars">
+        {AVATARS.map((av, i) => {
+          const off = offsetOf(i);
+          if (Math.abs(off) > 2) return null;
           return (
-            <span
-              className="wii-avatar-circle"
-              style={{ background: `radial-gradient(circle at 35% 30%, oklch(95% 0.01 255) 0%, ${av.tint} 80%)` }}
-              aria-hidden
+            <motion.button
+              key={av.id}
+              type="button"
+              role="option"
+              aria-selected={off === 0}
+              className={`wii-avatar-circle${off === 0 ? " wii-avatar-circle--active" : ""}`}
+              onClick={() => setActiveIndex(i)}
+              style={{
+                background: `radial-gradient(circle at 35% 28%, oklch(96% 0.012 240) 0%, ${av.tint} 78%)`,
+                zIndex: 10 - Math.abs(off),
+              }}
+              initial={false}
+              animate={{
+                y: off * 38,
+                scale: off === 0 ? 1 : 0.72,
+                opacity: off === 0 ? 1 : 0.5,
+              }}
+              transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
             >
               {av.initial}
-            </span>
+            </motion.button>
           );
-        }}
-      />
+        })}
+      </div>
+      <button
+        type="button"
+        className="wii-wheel-arrow"
+        onClick={() => cycle(1)}
+        aria-label="next avatar"
+      >
+        ▼
+      </button>
       <div className="wii-avatars-label">ATTA</div>
     </div>
   );
@@ -365,28 +405,31 @@ export default function AboutPage() {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               >
-                {/* Card 1 */}
-                <article className="about-card">
-                  <span className="about-card-kicker">{content.card1.kicker}</span>
-                  <h2 className="about-card-title">{content.card1.title}</h2>
-                  <p className="about-card-body">{content.card1.body}</p>
-                </article>
+                {/* Left column — two stacked smaller placeholders */}
+                <div className="about-left-col">
+                  {/* Card 1 — small, upper-left */}
+                  <article className="about-card about-card--small">
+                    <span className="about-card-kicker">{content.card1.kicker}</span>
+                    <h2 className="about-card-title">{content.card1.title}</h2>
+                    <p className="about-card-body">{content.card1.body}</p>
+                  </article>
 
-                {/* Card 2 */}
-                <article className="about-card">
-                  <span className="about-card-kicker">{content.card2.kicker}</span>
-                  <h2 className="about-card-title">{content.card2.title}</h2>
-                  <ul className="about-card-tags">
-                    {content.card2.tags.map((tag) => (
-                      <li key={tag} className="about-card-tag">{tag}</li>
-                    ))}
-                  </ul>
-                  {content.card2.note && (
-                    <p className="about-card-note">{content.card2.note}</p>
-                  )}
-                </article>
+                  {/* Card 2 — small, middle, "Switch Content Option" */}
+                  <article className="about-card about-card--small">
+                    <span className="about-card-kicker">{content.card2.kicker}</span>
+                    <h2 className="about-card-title">{content.card2.title}</h2>
+                    <ul className="about-card-tags">
+                      {content.card2.tags.map((tag) => (
+                        <li key={tag} className="about-card-tag">{tag}</li>
+                      ))}
+                    </ul>
+                    {content.card2.note && (
+                      <p className="about-card-note">{content.card2.note}</p>
+                    )}
+                  </article>
+                </div>
 
-                {/* Win7 frame */}
+                {/* Right column — big Win7 STATS frame, full panel height */}
                 <Win7Frame>
                   <div className="about-stats">
                     <div className="about-stats-label">{content.stats.label}</div>
