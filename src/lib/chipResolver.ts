@@ -42,6 +42,16 @@ const CHIPS_DATA: ChipEntry[] = [
     ],
   },
   {
+    label: "About",
+    href: "/about",
+    keywords: [
+      "about", "bio", "biography", "profile", "boelie", "who",
+      "intro", "introduction",
+      // NL
+      "over", "wie", "bio",
+    ],
+  },
+  {
     label: "CKORE",
     keywords: [
       "ckore",

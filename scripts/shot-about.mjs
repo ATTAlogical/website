@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+import { writeFileSync } from "fs";
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.setViewportSize({ width: 1280, height: 800 });
+await page.goto("http://localhost:3456/about", { waitUntil: "networkidle" });
+await page.waitForTimeout(800);
+writeFileSync("scripts/about-desktop.png", await page.screenshot({ fullPage: false }));
+console.log("✓ about-desktop.png");
+await browser.close();

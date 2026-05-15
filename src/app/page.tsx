@@ -1232,8 +1232,16 @@ export default function Home() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/catalogue" className="m-index-row">
+                  <Link href="/about" className="m-index-row">
                     <span className="m-index-num">03</span>
+                    <span className="m-index-name">about</span>
+                    <span className="m-index-note">boelie · profile</span>
+                    <span className="m-index-arrow" aria-hidden>→</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/catalogue" className="m-index-row">
+                    <span className="m-index-num">04</span>
                     <span className="m-index-name">catalogue</span>
                     <span className="m-index-note">work</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
@@ -1241,7 +1249,7 @@ export default function Home() {
                 </li>
                 <li>
                   <Link href="/temporal" className="m-index-row">
-                    <span className="m-index-num">04</span>
+                    <span className="m-index-num">05</span>
                     <span className="m-index-name">the log</span>
                     <span className="m-index-note">chronicle</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
@@ -1256,7 +1264,7 @@ export default function Home() {
                       target?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
                   >
-                    <span className="m-index-num">05</span>
+                    <span className="m-index-num">06</span>
                     <span className="m-index-name">contact</span>
                     <span className="m-index-note">boelie</span>
                     <span className="m-index-arrow" aria-hidden>↓</span>
@@ -1786,6 +1794,7 @@ export default function Home() {
                 { label: "Catalogue", href: "/catalogue" },
                 { label: "Subscriptions", href: "/subscriptions" },
                 { label: "The Log", href: "/temporal" },
+                { label: "About", href: "/about" },
               ].map(({ label, href }) => (
                 <Link key={label} href={href} style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textDecoration: "none", textTransform: "uppercase" }}>
                   {label}
