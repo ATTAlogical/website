@@ -18,6 +18,9 @@ type PhysicsNode = {
   seedX: number;
   seedY: number;
   radius: number;
+  /** Radians — for child nodes, the deterministic angle around their parent.
+   *  Even-spread within siblings. NaN for non-child nodes (unused). */
+  childAngle: number;
 };
 
 const REPULSION_K = 5200;        // pairwise repulsion
@@ -43,9 +46,9 @@ function stepPhysics(
   parentMap: Map<string, string> = new Map(),
   /** Slug of currently-expanded parent (children spread outward); null = all collapsed. */
   expandedParent: string | null = null,
-  /** 0..1 ramp for how spread-out the expanded parent's children should be.
-   *  Multiplies the parent-spring rest length so expansion is smooth. */
-  expandFactor: number = 0,
+  /** Per-parent 0..1 factor — drives kinematic child positioning. Each family
+   *  has its own factor so crossfading between families is smooth. */
+  parentExpandFactors: Map<string, number> = new Map(),
 ) {
   const byIndex = new Map<string, number>();
   for (let i = 0; i < nodes.length; i++) byIndex.set(nodes[i].slug, i);
@@ -145,61 +148,28 @@ function stepPhysics(
     b.vy -= ny * f * STEP_DT;
   }
 
-  // Parent-spring: only for ACTIVE (currently-expanded) children. The rest
-  // length is ramped 0 → EXPANDED_REST over ~0.6s. K is gentle; we also
-  // apply spring-axis damping (Hooke + velocity-proportional resistance)
-  // so children critically-damp toward the rest length instead of
-  // oscillating around it.
-  const PARENT_SPRING_K = 0.012;
+  // Child nodes are KINEMATIC, not physical. Each child has a fixed angle
+  // around its parent (assigned at init for even distribution). The PARENT's
+  // own expand factor (0..1) drives how far out along that angle the child
+  // sits. Per-family factors mean families crossfade smoothly: hovering
+  // album A while album B is still retracting → both animate independently.
   const EXPANDED_REST = 70;
-  // Critical damping coefficient ≈ 2√K. Slightly over-damped to absorb any
-  // residual velocity from quick hover bounces between albums.
-  const SPRING_AXIAL_DAMP = 0.32;
-  const restNow = EXPANDED_REST * expandFactor;
-  for (const [childSlug, parentSlug] of parentMap.entries()) {
-    const ci = byIndex.get(childSlug);
-    if (ci === undefined || isCollapsed[ci]) continue;
-    const pi = byIndex.get(parentSlug);
-    if (pi === undefined) continue;
-    const child = nodes[ci];
-    const parent = nodes[pi];
-    const dx = parent.x - child.x;
-    const dy = parent.y - child.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-    const nx = dx / dist;
-    const ny = dy / dist;
-    // Hooke restoring force
-    const stretch = dist - restNow;
-    const f = stretch * PARENT_SPRING_K;
-    child.vx += nx * f;
-    child.vy += ny * f;
-    // Velocity component along the spring axis (positive = moving toward parent)
-    const vRadial = nx * child.vx + ny * child.vy;
-    // Damping force opposes radial velocity component → kills oscillation along spring
-    child.vx -= nx * vRadial * SPRING_AXIAL_DAMP;
-    child.vy -= ny * vRadial * SPRING_AXIAL_DAMP;
-  }
 
-  // Integrate. Collapsed children snap to parent + a deterministic tiny radial
-  // offset so when they become active the spring has a real direction to push
-  // them outward. The offset is too small to be visually noticeable through
-  // the parent's larger dot but big enough to seed the physics.
+  // Integrate. Children get kinematic positioning; everyone else integrates
+  // velocity normally.
   for (let i = 0; i < nodes.length; i++) {
-    if (isCollapsed[i]) {
-      const parentSlug = parentMap.get(nodes[i].slug);
-      if (parentSlug) {
-        const pi = byIndex.get(parentSlug);
-        if (pi !== undefined) {
-          const slug = nodes[i].slug;
-          // Deterministic angle from slug — same child always rests at same angle
-          let h = 0;
-          for (let k = 0; k < slug.length; k++) h = (h * 31 + slug.charCodeAt(k)) | 0;
-          const angle = ((Math.abs(h) % 1000) / 1000) * Math.PI * 2;
-          nodes[i].x = nodes[pi].x + Math.cos(angle) * 3;
-          nodes[i].y = nodes[pi].y + Math.sin(angle) * 3;
-          nodes[i].vx = 0;
-          nodes[i].vy = 0;
-        }
+    const parentSlug = parentMap.get(nodes[i].slug);
+    if (parentSlug) {
+      const pi = byIndex.get(parentSlug);
+      if (pi !== undefined) {
+        const parent = nodes[pi];
+        const angle = nodes[i].childAngle;
+        const parentFactor = parentExpandFactors.get(parentSlug) ?? 0;
+        const r = EXPANDED_REST * parentFactor;
+        nodes[i].x = parent.x + Math.cos(angle) * r;
+        nodes[i].y = parent.y + Math.sin(angle) * r;
+        nodes[i].vx = 0;
+        nodes[i].vy = 0;
       }
     } else {
       nodes[i].x += nodes[i].vx;
@@ -307,13 +277,10 @@ export default function AtlasView({
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Smooth pause factor 0..1. Lerps toward target each frame so the freeze isn't abrupt. */
   const factorRef = useRef<number>(1);
-  /** Smooth expand factor 0..1. When a parent is hovered, ramps toward 1.
-   *  Otherwise ramps toward 0. Multiplies parent-spring rest length so children
-   *  spread outward gradually instead of shooting out on instant hover. */
-  const expandFactorRef = useRef<number>(0);
-  /** Previous hovered slug — used to reset expandFactor on hover-to-different-album
-   *  transitions so the new children start fresh from collapsed. */
-  const prevHoveredRef = useRef<string | null>(null);
+  /** Per-parent 0..1 expand factor. Each family animates independently —
+   *  hovering album A while album B is still retracting → both progress
+   *  smoothly without interfering with each other. */
+  const parentExpandFactorsRef = useRef<Map<string, number>>(new Map());
 
   const beginHoverPause = () => {
     if (resumeTimerRef.current) {
@@ -352,6 +319,26 @@ export default function AtlasView({
       if (e.parentSlug) m.set(e.slug, e.parentSlug);
     }
     return m;
+  }, [entries]);
+  /** child slug → angle around its parent (radians). Evenly distributed
+   *  within siblings; stable across renders. */
+  const childAngles = useMemo(() => {
+    const angles = new Map<string, number>();
+    const groups = new Map<string, string[]>();
+    for (const e of entries) {
+      if (e.parentSlug) {
+        const arr = groups.get(e.parentSlug) ?? [];
+        arr.push(e.slug);
+        groups.set(e.parentSlug, arr);
+      }
+    }
+    for (const children of groups.values()) {
+      children.sort(); // deterministic order
+      for (let i = 0; i < children.length; i++) {
+        angles.set(children[i], (i / children.length) * Math.PI * 2);
+      }
+    }
+    return angles;
   }, [entries]);
   /** All edges: lineage from links[] PLUS one edge per parent → child relationship. */
   const edges = useMemo(() => {
@@ -424,14 +411,15 @@ export default function AtlasView({
         seedX: seed(entry.slug + "x") * 1000,
         seedY: seed(entry.slug + "y") * 1000,
         radius: 6 + (TYPE_WEIGHT[entry.type] ?? 1) * 3,
+        childAngle: childAngles.get(entry.slug) ?? 0,
       };
     });
 
     // Pre-settle the layout with hidden iterations so the initial paint looks composed.
-    // Initial settle has all children collapsed (no expanded parent, expandFactor=0),
-    // so tracks sit on top of their parent album.
+    // Empty factors map → all children collapsed at parent.
+    const initialFactors = new Map<string, number>();
     for (let k = 0; k < 400; k++) {
-      stepPhysics(physicsRef.current, edges, branchMap, k, 1, parentMap, null, 0);
+      stepPhysics(physicsRef.current, edges, branchMap, k, 1, parentMap, null, initialFactors);
     }
     paintFrame(physicsRef.current, edges, 240, {
       nodes: nodeRefs.current,
@@ -455,24 +443,24 @@ export default function AtlasView({
         : f + (target - f) * RAMP_PER_FRAME;
       factorRef.current = next;
 
-      // Active = hovered OR selected. Selected keeps the family expanded after
-      // a click — the detail panel is open, the user wants to see what they
-      // clicked plus its context.
+      // Active family = the family root of the hovered OR selected node.
+      // Selected keeps the family expanded after a click.
       const currActive = hoveredRef.current ?? selectedRef.current;
-      const prevActive = prevHoveredRef.current;
-      const currFamily = currActive ? (parentMap.get(currActive) ?? currActive) : null;
-      const prevFamily = prevActive ? (parentMap.get(prevActive) ?? prevActive) : null;
-      if (currFamily !== prevFamily && currFamily && prevFamily) {
-        expandFactorRef.current = 0;
-      }
-      prevHoveredRef.current = currActive;
+      const activeFamily = currActive ? (parentMap.get(currActive) ?? currActive) : null;
 
-      const expandTarget = currActive ? 1 : 0;
-      const ef = expandFactorRef.current;
-      const efNext = Math.abs(expandTarget - ef) < 0.005
-        ? expandTarget
-        : ef + (expandTarget - ef) * EXPAND_RAMP_PER_FRAME;
-      expandFactorRef.current = efNext;
+      // Update each parent's expand factor — only the active family ramps to 1;
+      // everyone else ramps back to 0. Each parent retains its own factor so
+      // crossfading between families is smooth.
+      const factors = parentExpandFactorsRef.current;
+      const allParents = new Set(parentMap.values());
+      for (const parentSlug of allParents) {
+        const target = parentSlug === activeFamily ? 1 : 0;
+        const cur = factors.get(parentSlug) ?? 0;
+        const nextF = Math.abs(target - cur) < 0.005
+          ? target
+          : cur + (target - cur) * EXPAND_RAMP_PER_FRAME;
+        factors.set(parentSlug, nextF);
+      }
 
       stepPhysics(
         physicsRef.current,
@@ -482,7 +470,7 @@ export default function AtlasView({
         next,
         parentMap,
         currActive,
-        efNext,
+        factors,
       );
       paintFrame(
         physicsRef.current,
