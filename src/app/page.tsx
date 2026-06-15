@@ -1137,13 +1137,13 @@ export default function Home() {
           pushChip(aiLabel, href, section);
         } else {
           setShowQuestionMark(true);
-          setTimeout(() => setShowQuestionMark(false), 700);
+          setTimeout(() => setShowQuestionMark(false), 1800);
         }
       })
       .catch(() => {
         setIsAiLoading(false);
         setShowQuestionMark(true);
-        setTimeout(() => setShowQuestionMark(false), 700);
+        setTimeout(() => setShowQuestionMark(false), 1800);
       });
   }, [submittedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
