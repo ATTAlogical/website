@@ -39,10 +39,22 @@ Available routes:
 Rules:
 - Invent a short label (1–3 words, title case). Style: distilled, technical, editorial — like a system tag or a concept node, not a menu item or call-to-action phrase. Prefer terse nouns and noun compounds over verb phrases. Good examples: "Signal", "Build Index", "Rate Card", "Work Log", "Construct", "Open Channel", "Field Record", "Stack", "Output", "Dispatch". Bad examples: "Get In Touch", "Other Websites", "See My Work", "Work History", "Full Catalogue".
 - Never use "ATTA" or "ATTA logical" in the label. If the query is about the brand itself, use "Logical".
-- Pick the ONE best route. If truly nothing fits, return null for both fields.
-- Be lenient with typos and partial matches.
+- Only pick a route when the query has a recognizable meaning that maps to one of the routes.
+- Typo tolerance applies ONLY to real words with 1–2 wrong letters: "porfolio"→catalogue, "contac"→contact, "stre"→store. It does NOT extend to random letter strings.
+- If the query is gibberish, keyboard mashing, or has no recognizable English/Dutch word root (examples: "dehfsgjfgsj", "asdfgh", "qwerty", "xkcdvb", "kfjghsdf"), return {"label":null,"route":null}.
+- If nothing clearly fits, return {"label":null,"route":null}. Do NOT force a match.
 - Respond ONLY with valid JSON: {"label":"...","route":"..."} or {"label":null,"route":null}
 - No explanation, no markdown, only the JSON object`;
+
+// Cheap gibberish gate — catches keyboard mashing before we spend a Groq call.
+// Triggers on 5+ consecutive consonants, or 4+ chars with no vowels.
+function isGibberish(q: string): boolean {
+  const s = q.toLowerCase();
+  if (s.length < 4) return false;
+  if (/[bcdfghjklmnpqrstvwxz]{5,}/.test(s)) return true;
+  if (!/[aeiouy]/.test(s)) return true;
+  return false;
+}
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -57,6 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!query) return NextResponse.json({ label: null });
+  if (isGibberish(query)) return NextResponse.json({ label: null });
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ label: null });
