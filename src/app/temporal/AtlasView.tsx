@@ -410,7 +410,7 @@ export default function AtlasView({
         vy: 0,
         seedX: seed(entry.slug + "x") * 1000,
         seedY: seed(entry.slug + "y") * 1000,
-        radius: 6 + (TYPE_WEIGHT[entry.type] ?? 1) * 3,
+        radius: 9 + (TYPE_WEIGHT[entry.type] ?? 1) * 3.5,
         childAngle: childAngles.get(entry.slug) ?? 0,
       };
     });
@@ -515,6 +515,23 @@ export default function AtlasView({
         aria-label="A network graph of log entries, each connected by lineage"
         style={{ opacity: ready ? 1 : 0 }}
       >
+        {/* ClipPaths for album-cover nodes */}
+        <defs>
+          {renderEntries.map((entry) => {
+            if (!entry.spotifyThumb) return null;
+            const r = 9 + (TYPE_WEIGHT[entry.type] ?? 1) * 3.5;
+            const isChild = !!entry.parentSlug;
+            return (
+              <clipPath key={`clip-${entry.slug}`} id={`clip-${entry.slug}`}>
+                {isChild
+                  ? <rect x={-r} y={-r} width={r * 2} height={r * 2} rx={3} ry={3} />
+                  : <circle r={r} />
+                }
+              </clipPath>
+            );
+          })}
+        </defs>
+
         {/* Edges */}
         <g className="atlas-edges">
           {edges.map((e) => {
@@ -558,7 +575,7 @@ export default function AtlasView({
             const isHovered = hovered === entry.slug;
             const isSomeoneElseHovered = hovered !== null && !isHovered;
             const isSelected = selected?.slug === entry.slug;
-            const radius = 6 + (TYPE_WEIGHT[entry.type] ?? 1) * 3;
+            const radius = 9 + (TYPE_WEIGHT[entry.type] ?? 1) * 3.5;
 
             // BPM-driven pulse — CKORE tracks only, when tempo is known
             const bpm = entry.spotifyTempo;
@@ -632,11 +649,51 @@ export default function AtlasView({
                 }}
               >
                 {/* Outer glow ring (visible on hover) */}
-                <circle className="atlas-node-glow" r={radius + 9} />
-                {/* Main dot */}
-                <circle className="atlas-node-dot" r={radius} />
-                {/* Inner highlight */}
-                <circle className="atlas-node-core" r={radius * 0.4} cx={-radius * 0.18} cy={-radius * 0.18} />
+                <circle
+                  className="atlas-node-glow"
+                  r={radius + 9}
+                  style={moodColor ? { fill: moodColor } : undefined}
+                />
+                {entry.spotifyThumb ? (
+                  <>
+                    {/* Mood-colored shadow bloom behind the cover */}
+                    <circle
+                      r={radius + 5}
+                      fill={moodColor ?? "rgba(0,0,0,0.18)"}
+                      opacity={0.45}
+                      cy={3}
+                      style={{ filter: "blur(6px)" }}
+                    />
+                    {/* Album cover */}
+                    <image
+                      href={entry.spotifyThumb}
+                      x={-radius} y={-radius}
+                      width={radius * 2} height={radius * 2}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#clip-${entry.slug})`}
+                    />
+                    {/* Border ring */}
+                    {entry.parentSlug ? (
+                      <rect
+                        x={-radius} y={-radius}
+                        width={radius * 2} height={radius * 2}
+                        rx={3} ry={3}
+                        fill="none"
+                        stroke="rgba(255,255,255,0.45)"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <circle r={radius} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Main dot */}
+                    <circle className="atlas-node-dot" r={radius} />
+                    {/* Inner highlight */}
+                    <circle className="atlas-node-core" r={radius * 0.4} cx={-radius * 0.18} cy={-radius * 0.18} />
+                  </>
+                )}
                 {/* Label */}
                 <text
                   className="atlas-node-label"
