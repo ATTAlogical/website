@@ -1216,32 +1216,16 @@ export default function Home() {
               </h2>
               <ol className="m-index-list">
                 <li>
-                  <Link href="/laugical/store" className="m-index-row">
-                    <span className="m-index-num">01</span>
-                    <span className="m-index-name">Laugical</span>
-                    <span className="m-index-note">store</span>
-                    <span className="m-index-arrow" aria-hidden>→</span>
-                  </Link>
-                </li>
-                <li>
                   <Link href="/temporal" className="m-index-row">
-                    <span className="m-index-num">02</span>
+                    <span className="m-index-num">01</span>
                     <span className="m-index-name">CKORE</span>
                     <span className="m-index-note">music · in the log</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about" className="m-index-row">
-                    <span className="m-index-num">03</span>
-                    <span className="m-index-name">about</span>
-                    <span className="m-index-note">boelie · profile</span>
-                    <span className="m-index-arrow" aria-hidden>→</span>
-                  </Link>
-                </li>
-                <li>
                   <Link href="/catalogue" className="m-index-row">
-                    <span className="m-index-num">04</span>
+                    <span className="m-index-num">02</span>
                     <span className="m-index-name">catalogue</span>
                     <span className="m-index-note">work</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
@@ -1249,7 +1233,7 @@ export default function Home() {
                 </li>
                 <li>
                   <Link href="/temporal" className="m-index-row">
-                    <span className="m-index-num">05</span>
+                    <span className="m-index-num">03</span>
                     <span className="m-index-name">the log</span>
                     <span className="m-index-note">chronicle</span>
                     <span className="m-index-arrow" aria-hidden>→</span>
@@ -1259,19 +1243,61 @@ export default function Home() {
                   <button
                     className="m-index-row"
                     type="button"
-                    onClick={() => {
-                      const target = document.querySelector('[data-section="contact"]');
-                      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
+                    onClick={goToContact}
                   >
-                    <span className="m-index-num">06</span>
+                    <span className="m-index-num">04</span>
                     <span className="m-index-name">contact</span>
                     <span className="m-index-note">boelie</span>
                     <span className="m-index-arrow" aria-hidden>↓</span>
                   </button>
                 </li>
+                <li>
+                  <button
+                    className="m-index-row"
+                    type="button"
+                    onClick={() => handleChipClick("logical")}
+                  >
+                    <span className="m-index-num">05</span>
+                    <span className="m-index-name">logical</span>
+                    <span className="m-index-note">explore</span>
+                    <span className="m-index-arrow" aria-hidden>↓</span>
+                  </button>
+                </li>
               </ol>
             </nav>
+
+            <AnimatePresence>
+              {showScrollHint && (
+                <motion.div
+                  key="m-scroll-hint"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  style={{
+                    position: "fixed",
+                    bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 40,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <motion.span
+                    animate={{ y: [0, 6, 0] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                      display: "block",
+                      fontFamily: "ui-monospace, monospace",
+                      fontSize: "18px",
+                      color: "rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    ↓
+                  </motion.span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Contact email — surfaces only after engagement (preserves easter-egg behavior) */}
             <div
