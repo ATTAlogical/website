@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useCkoreAudio } from "@/context/CkoreAudio";
 import AtlasView from "./AtlasView";
 import CardDeckView from "./CardDeckView";
 import MusicSidebar from "./MusicSidebar";
@@ -36,6 +37,13 @@ export default function TemporalClient({
   showVanity?: boolean;
 }) {
   const isMobile = useIsMobile();
+  const { setActiveSong } = useCkoreAudio();
+
+  // Switch to the log track on mount, return to home on leave
+  useEffect(() => {
+    setActiveSong("log");
+    return () => setActiveSong("home");
+  }, [setActiveSong]);
 
   // Shared selected entry — drives detail panel from either AtlasView or MusicSidebar
   const [selected, setSelected] = useState<TemporalEntry | null>(null);

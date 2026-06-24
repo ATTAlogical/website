@@ -294,13 +294,17 @@ function StoreHero() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StorePage() {
-  // Unlock scroll — globals.css sets overflow:hidden on html/body
+  // Unlock scroll — globals.css sets overflow:hidden + height:100% on html/body
   useEffect(() => {
     document.body.style.overflow = "auto";
+    document.body.style.height = "auto";
     document.documentElement.style.overflow = "auto";
+    document.documentElement.style.height = "auto";
     return () => {
       document.body.style.overflow = "";
+      document.body.style.height = "";
       document.documentElement.style.overflow = "";
+      document.documentElement.style.height = "";
     };
   }, []);
 

@@ -1820,7 +1820,6 @@ export default function Home() {
                 { label: "Catalogue", href: "/catalogue" },
                 { label: "Subscriptions", href: "/subscriptions" },
                 { label: "The Log", href: "/temporal" },
-                { label: "About", href: "/about" },
               ].map(({ label, href }) => (
                 <Link key={label} href={href} style={{ fontSize: "clamp(0.5rem, 0.72vw, 0.65rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.28)", textDecoration: "none", textTransform: "uppercase" }}>
                   {label}
