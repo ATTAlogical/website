@@ -1307,9 +1307,9 @@ export default function Home() {
                 pointerEvents: contactClicks > 0 ? "auto" : "none",
               }}
             >
-              <a href="mailto:Boelie@attalogical.com" className="glossy-text">
+              <span className="glossy-text">
                 Boelie@attalogical.com
-              </a>
+              </span>
             </div>
 
             {/* Hidden glassRef so chip layer logic doesn't crash if it ever runs on mobile */}
@@ -1431,10 +1431,10 @@ export default function Home() {
                   pointerEvents: contactClicks > 0 ? "auto" : "none",
                 }}
               >
-                <a href="mailto:Boelie@attalogical.com" className="glossy-text"
-                  style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)", letterSpacing: "0.1em", textDecoration: "none", whiteSpace: "nowrap" }}>
+                <span className="glossy-text"
+                  style={{ display: "block", paddingBottom: 0, fontSize: "clamp(0.7rem, 1.1vw, 0.9rem)", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>
                   Boelie@attalogical.com
-                </a>
+                </span>
                 <button onClick={goToContact}
                   style={{ marginTop: "0.6em", background: "none", border: "none", fontFamily: '"Playfair Display", serif', fontSize: "clamp(0.6rem, 0.9vw, 0.75rem)", letterSpacing: "0.12em", color: "rgba(0,0,0,0.35)", cursor: "pointer", padding: 0 }}
                   onMouseEnter={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
@@ -1641,17 +1641,21 @@ export default function Home() {
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
                   {[
-                    { label: "email", href: "mailto:Boelie@attalogical.com", text: "Boelie@attalogical.com" },
+                    { label: "email", href: null, text: "Boelie@attalogical.com" },
                     { label: "instagram", href: "https://www.instagram.com/boelie36/", text: "@boelie36" },
                     { label: "github", href: "https://github.com/ATTAlogical", text: "ATTAlogical" },
                   ].map(({ label, href, text }) => (
                     <div key={label} style={{ display: "flex", flexDirection: isMobile ? "row-reverse" : "row", gap: "2rem", alignItems: "baseline" }}>
                       <span style={{ fontSize: "clamp(0.6rem, 0.8vw, 0.72rem)", letterSpacing: "0.15em", color: "rgba(0,0,0,0.3)", width: "5rem", textTransform: "uppercase", flexShrink: 0 }}>{label}</span>
-                      <a href={href} target={label !== "email" ? "_blank" : undefined} rel="noreferrer"
-                        style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "#000")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
-                      >{text}</a>
+                      {href ? (
+                        <a href={href} target="_blank" rel="noreferrer"
+                          style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", textDecoration: "none", letterSpacing: "0.04em", transition: "color 0.2s" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#000")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "rgba(0,0,0,0.7)")}
+                        >{text}</a>
+                      ) : (
+                        <span style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", color: "rgba(0,0,0,0.7)", letterSpacing: "0.04em" }}>{text}</span>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -416,7 +416,7 @@ export default function Subscriptions() {
                   {submitted ? (
                     <div className="sub-contact-thanks">
                       <p className="sub-contact-thanks-title">Message sent.</p>
-                      <p className="sub-contact-thanks-note">Your email client should have opened. If not, write to Boelie@attalogical.com directly.</p>
+                      <p className="sub-contact-thanks-note">Message sent via the contact form. Expect a reply within 1–3 business days.</p>
                     </div>
                   ) : (
                     <form className="sub-contact-form" style={{ paddingTop: "16px" }} onSubmit={handleContactSubmit}>
