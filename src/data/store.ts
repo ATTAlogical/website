@@ -24,6 +24,10 @@ export type StoreProduct = {
   images: string[];
   availability: AvailabilityState;
   tags?: string[];
+  /** Dev flag — remove when the product is real and ready */
+  placeholder?: boolean;
+  /** Makes the dropship grid item span 2 columns with a wider image */
+  featured?: boolean;
 };
 
 export type ProductLineage = {
@@ -60,6 +64,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'in-stock', quantity: 50 },
     tags: ['sticker'],
+    placeholder: true,
   },
   {
     slug: 'sticker-atta-logo',
@@ -71,6 +76,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'in-stock', quantity: 30 },
     tags: ['sticker'],
+    placeholder: true,
   },
   {
     slug: 'print-construct-01',
@@ -82,6 +88,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'in-stock', quantity: 12 },
     tags: ['print'],
+    placeholder: true,
   },
   {
     slug: 'print-field-record',
@@ -93,6 +100,45 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'coming-soon' },
     tags: ['print'],
+    placeholder: true,
+  },
+
+  {
+    slug: 'sticker-system-error',
+    type: 'dropship',
+    name: 'System Error sticker',
+    description: 'Die-cut vinyl, weatherproof. 9×5 cm.',
+    price: 4.0,
+    currency: 'EUR',
+    images: [],
+    availability: { kind: 'in-stock', quantity: 40 },
+    tags: ['sticker'],
+    placeholder: true,
+  },
+  {
+    slug: 'zine-archive-vol1',
+    type: 'dropship',
+    name: 'Archive Vol. 1 — zine',
+    description: 'A5 risograph zine, 24 pages. First edition of 100.',
+    price: 14.0,
+    currency: 'EUR',
+    images: [],
+    availability: { kind: 'coming-soon' },
+    tags: ['print', 'zine'],
+    placeholder: true,
+  },
+  {
+    slug: 'print-atlas-a2',
+    type: 'dropship',
+    name: 'Atlas — A2 print',
+    description: 'Large format Giclée on 310gsm cotton rag. Edition of 15.',
+    price: 65.0,
+    currency: 'EUR',
+    images: [],
+    availability: { kind: 'in-stock', quantity: 8 },
+    tags: ['print'],
+    featured: true,
+    placeholder: true,
   },
 
   // ── Made to order ──
@@ -107,6 +153,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'made-to-order', fulfillment: 'days' },
     tags: ['apparel'],
+    placeholder: true,
   },
   {
     slug: 'hoodie-atta-archive',
@@ -119,6 +166,21 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'made-to-order', fulfillment: 'week' },
     tags: ['apparel'],
+    placeholder: true,
+  },
+
+  {
+    slug: 'cap-atta-mark',
+    type: 'made-to-order',
+    name: 'ATTA Mark cap',
+    description: 'Six-panel structured cap, embroidered ATTA mark.',
+    material: 'Cotton twill, adjustable buckle strap.',
+    price: 55.0,
+    currency: 'EUR',
+    images: [],
+    availability: { kind: 'made-to-order', fulfillment: 'week' },
+    tags: ['apparel'],
+    placeholder: true,
   },
 
   // ── One of one ──
@@ -135,6 +197,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'in-stock', quantity: 1 },
     tags: ['bag', 'one-of-one'],
+    placeholder: true,
   },
   {
     slug: 'clear-bag-002',
@@ -149,5 +212,20 @@ export const STORE_PRODUCTS: StoreProduct[] = [
     images: [],
     availability: { kind: 'sold', soldAt: '2026-04-12' },
     tags: ['bag', 'one-of-one'],
+    placeholder: true,
+  },
+  {
+    slug: 'clear-bag-003',
+    lineageId: 'clear-bag',
+    lineageVersion: '03',
+    type: 'one-of-one',
+    name: 'Clear Bag No. 03',
+    description: 'Transparent PVC with internal collage — composition in progress.',
+    price: 210.0,
+    currency: 'EUR',
+    images: [],
+    availability: { kind: 'coming-soon' },
+    tags: ['bag', 'one-of-one'],
+    placeholder: true,
   },
 ];

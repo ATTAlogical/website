@@ -253,20 +253,25 @@ export default function Subscriptions() {
   const ROMAN = ["I", "II", "III", "IV"] as const;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#fff", paddingBottom: isMobile ? "80px" : "160px" }}>
-      <div className="sub-page">
+    <>
+    {/* Fixed nav */}
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: isMobile ? "13px 5vw 13px 1.2rem" : "14px 8vw 14px 1.5rem",
+      fontFamily: "var(--font-geist-mono), ui-monospace, Menlo, monospace",
+      fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
+      color: "rgba(0,0,0,0.35)",
+      background: "rgba(255,255,255,0.3)",
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      borderBottom: "0.5px solid rgba(0,0,0,0.06)",
+    }}>
+      <Link href="/" className="sub-back">← ATTA logical</Link>
+      <span>ATTA·SUB·2026</span>
+    </div>
 
-        {/* ── Nav ── */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "48px 0 0",
-          fontFamily: "var(--font-geist-mono), ui-monospace, Menlo, monospace",
-          fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
-          color: "rgba(0,0,0,0.35)",
-        }}>
-          <Link href="/" className="sub-back">← ATTA logical</Link>
-          <span>ATTA·SUB·2026</span>
-        </div>
+    <main style={{ minHeight: "100vh", background: "#fff", paddingBottom: isMobile ? "80px" : "160px", paddingTop: "43px" }}>
+      <div className="sub-page">
 
         {/* ── Hero ── */}
         <div className="sub-hero-center">
@@ -383,7 +388,7 @@ export default function Subscriptions() {
         {/* ── Footer ── */}
         <footer className="sub-footer">
           <div>
-            <a href="mailto:Boelie@attalogical.com" className="sub-footer-email"
+            <span className="sub-footer-email"
               style={{
                 background: "linear-gradient(180deg, #000 0%, #111 40%, #666 80%, #888 100%)",
                 WebkitBackgroundClip: "text",
@@ -392,7 +397,7 @@ export default function Subscriptions() {
               }}
             >
               Boelie@attalogical.com
-            </a>
+            </span>
             <p className="sub-footer-note">{c.footerNote}</p>
             <button className="sub-contact-trigger" style={{ marginTop: "28px" }} onClick={() => { setContactOpen(o => !o); setSubmitted(false); }}>
               {c.footerKicker}
@@ -455,5 +460,6 @@ export default function Subscriptions() {
       </div>
 
     </main>
+    </>
   );
 }

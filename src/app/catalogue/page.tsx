@@ -13,6 +13,7 @@ import {
   useTransform,
 } from "motion/react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useCkoreAudio } from "@/context/CkoreAudio";
 
 const ProjectSection = memo(function ProjectSection({
   project,
@@ -154,6 +155,7 @@ const ProjectSection = memo(function ProjectSection({
 
 export default function Catalogue() {
   const isMobile = useIsMobile();
+  const { setActiveSong } = useCkoreAudio();
   const [activeSlug, setActiveSlug] = useState(PROJECTS_DATA[0].slug);
   const active = PROJECTS_DATA.find(p => p.slug === activeSlug) ?? PROJECTS_DATA[0];
   const handleBecomeActive = useCallback((slug: string) => setActiveSlug(slug), []);
@@ -166,6 +168,11 @@ export default function Catalogue() {
     window.addEventListener("page:leaving", onLeaving);
     return () => window.removeEventListener("page:leaving", onLeaving);
   }, []);
+
+  useEffect(() => {
+    setActiveSong("catalogue");
+    return () => setActiveSong("home");
+  }, [setActiveSong]);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
@@ -184,12 +191,13 @@ export default function Catalogue() {
 
   return (
     <>
-    <main style={{ minHeight: "100vh", background: "#f7f7f7", fontFamily: '"Playfair Display", serif', paddingBottom: isMobile ? "90px" : "160px" }}>
+    <main style={{ minHeight: "100vh", background: "#f7f7f7", fontFamily: '"Playfair Display", serif', paddingBottom: isMobile ? "90px" : "160px", paddingTop: "43px" }}>
 
       {/* Top nav */}
       <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 10,
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: isMobile ? "32px 5vw 0" : "48px 8vw 0",
+        padding: isMobile ? "13px 5vw 13px 1.2rem" : "14px 8vw 14px 1.5rem",
         fontFamily: "var(--font-geist-mono), ui-monospace, Menlo, monospace",
         fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase",
         color: "rgba(0,0,0,0.35)",

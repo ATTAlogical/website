@@ -1,15 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useLaugicalCart } from "@/context/LaugicalCart";
 import {
   STORE_PRODUCTS,
+  PRODUCT_LINEAGES,
   type StoreProduct,
+  type ProductLineage,
   type ProductType,
   type AvailabilityState,
 } from "@/data/store";
+
+// ─── Placeholder chip ─────────────────────────────────────────────────────────
+
+function PlaceholderChip() {
+  return (
+    <span style={{
+      display: "inline-block",
+      fontSize: "0.44rem",
+      letterSpacing: "0.18em",
+      textTransform: "uppercase",
+      color: "rgba(0,0,0,0.35)",
+      border: "0.5px solid rgba(0,0,0,0.18)",
+      borderRadius: "20px",
+      padding: "0.18rem 0.52rem",
+      marginBottom: "0.6rem",
+      fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+      userSelect: "none",
+    }}>
+      placeholder
+    </span>
+  );
+}
 
 // ─── Availability label ────────────────────────────────────────────────────────
 
@@ -31,41 +55,239 @@ function isBuyable(state: AvailabilityState): boolean {
 
 // ─── One of one ───────────────────────────────────────────────────────────────
 
-function OneOfOneEntry({ product }: { product: StoreProduct }) {
-  const { addItem } = useLaugicalCart();
-  const buyable = isBuyable(product.availability);
+type OpoRole = "history" | "current" | "future";
+
+type OpoGroup = {
+  lineage: ProductLineage | null;
+  history: StoreProduct[];
+  current: StoreProduct[];
+  future:  StoreProduct[];
+};
+
+function buildOpoGroups(products: StoreProduct[]): OpoGroup[] {
+  const map = new Map<string, StoreProduct[]>();
+  for (const p of products) {
+    const key = p.lineageId ?? "__none__";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  return Array.from(map.entries()).map(([key, items]) => ({
+    lineage: key !== "__none__" ? (PRODUCT_LINEAGES.find(l => l.id === key) ?? null) : null,
+    history: items.filter(p => p.availability.kind === "sold"),
+    current: items.filter(p => p.availability.kind === "in-stock"),
+    future:  items.filter(p => p.availability.kind === "coming-soon"),
+  }));
+}
+
+const WHEEL_ITEM_H = 106;
+const WHEEL_H = 280;
+const WHEEL_SPACER = (WHEEL_H - WHEEL_ITEM_H) / 2; // 87 — lets first/last item snap to center
+
+function OpoWheelItem({ product, role, active }: { product: StoreProduct; role: OpoRole; active: boolean }) {
   const versionLabel = product.lineageVersion ? `No. ${product.lineageVersion}` : null;
-
+  const roleLabel = role === "future" ? "in progress" : role;
   return (
-    <article className="store-opo">
-      <div className="store-opo-meta">
-        {versionLabel && <span className="store-opo-version">{versionLabel}</span>}
-        <AvailLabel state={product.availability} />
-      </div>
-
-      {product.images[0] && (
-        <div className="store-opo-img-wrap glass-image-frame">
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            loading="eager"
-            decoding="async"
-            style={{ width: "100%", display: "block" }}
-          />
-        </div>
-      )}
-
-      <h2 className="store-opo-name">{product.name}</h2>
-      {product.description && <p className="store-opo-desc">{product.description}</p>}
-      {product.material && <p className="store-opo-material">{product.material}</p>}
-
-      <div className="store-opo-footer">
-        <div className="store-opo-footer-l">
-          <span className="store-price">
+    <div className="store-opo-wheel-item" data-active={active ? "true" : "false"}>
+      <div className="store-opo-wheel-info">
+        <span className="store-opo-wheel-role">{roleLabel}{versionLabel ? ` · ${versionLabel}` : ""}</span>
+        <h3 className="store-opo-wheel-name">{product.name}</h3>
+        {product.description && <p className="store-opo-wheel-desc">{product.description}</p>}
+        {role === "current" && (
+          <span className="store-price" style={{ fontSize: "13px", marginTop: "2px" }}>
             <span className="store-price-currency">€</span>
             {product.price.toFixed(2)}
           </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OpoLineageBlock({ group }: { group: OpoGroup }) {
+  const { lineage, history, current, future } = group;
+  const wheelRef = useRef<HTMLDivElement>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const items: { product: StoreProduct; role: OpoRole }[] = [
+    ...history.map(p => ({ product: p, role: "history" as const })),
+    ...current.map(p => ({ product: p, role: "current" as const })),
+    ...future.map(p => ({ product: p, role: "future" as const })),
+  ];
+
+  const initialFocus = (() => {
+    const ci = items.findIndex(i => i.role === "current");
+    if (ci >= 0) return ci;
+    const hi = items.map((x, i) => x.role === "history" ? i : -1).filter(i => i >= 0);
+    return hi.length > 0 ? hi[hi.length - 1] : 0;
+  })();
+
+  const [activeIdx, setActiveIdx] = useState(initialFocus);
+
+  useEffect(() => {
+    if (wheelRef.current) wheelRef.current.scrollTop = initialFocus * WHEEL_ITEM_H;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const idx = Math.round(el.scrollTop / WHEEL_ITEM_H);
+      setActiveIdx(Math.min(Math.max(idx, 0), items.length - 1));
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [items.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scrollToIdx = (i: number) =>
+    wheelRef.current?.scrollTo({ top: i * WHEEL_ITEM_H, behavior: "smooth" });
+
+  const activeItem = items[activeIdx] ?? items[0];
+
+  return (
+    <div className="store-opo-lineage">
+      <div className="store-opo-lineage-intro">
+        {lineage && <h2 className="store-opo-lineage-name">{lineage.name}</h2>}
+        {lineage?.description && <p className="store-opo-lineage-desc">{lineage.description}</p>}
+        <p className="store-opo-lineage-note">
+          Every piece is individually composed — no two are alike. Each can also be recreated on request.
+        </p>
+      </div>
+
+      <div className="store-opo-wheel-layout">
+        {/* Crossfading image panel — left of the scroll container */}
+        <div className="store-opo-wheel-img-panel">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeItem.product.slug}
+              className="store-opo-wheel-main-img"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+            >
+              {activeItem.product.images[0] ? (
+                <img src={activeItem.product.images[0]} alt={activeItem.product.name} loading="lazy" decoding="async" />
+              ) : (
+                <div className="store-opo-img-placeholder" />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
+
+        {/* Text-only scroll wheel */}
+        <div className="store-opo-wheel" ref={wheelRef}>
+          <div style={{ height: WHEEL_SPACER, flexShrink: 0 }} />
+          {items.map(({ product, role }, i) => (
+            <OpoWheelItem key={product.slug} product={product} role={role} active={i === activeIdx} />
+          ))}
+          <div style={{ height: WHEEL_SPACER, flexShrink: 0 }} />
+        </div>
+
+        {/* Arrow button + dot indicator */}
+        <div className="store-opo-wheel-controls">
+          <motion.button
+            className="store-opo-wheel-arrow"
+            onClick={() => setDetailOpen(v => !v)}
+            animate={{ rotate: detailOpen ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            aria-label={detailOpen ? "Close details" : "View details"}
+          >
+            →
+          </motion.button>
+          <div className="store-opo-wheel-dots" role="tablist" aria-label="Scroll position">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                className={`store-opo-wheel-dot${i === activeIdx ? " store-opo-wheel-dot--active" : ""}`}
+                onClick={() => scrollToIdx(i)}
+                aria-label={`Item ${i + 1} of ${items.length}`}
+                role="tab"
+                aria-selected={i === activeIdx}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {detailOpen && (
+          <motion.div
+            className="store-opo-detail-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="store-opo-detail-inner">
+              {activeItem.product.placeholder && <PlaceholderChip />}
+              {activeItem.product.lineageVersion && (
+                <span className="store-opo-version" style={{ display: "block", marginBottom: "4px" }}>
+                  No. {activeItem.product.lineageVersion}
+                </span>
+              )}
+              <h3 className="store-opo-detail-name">{activeItem.product.name}</h3>
+              {activeItem.product.description && (
+                <p className="store-opo-detail-desc">{activeItem.product.description}</p>
+              )}
+              <div className="store-opo-detail-footer">
+                {activeItem.role === "current" && (
+                  <span className="store-price">
+                    <span className="store-price-currency">€</span>
+                    {activeItem.product.price.toFixed(2)}
+                  </span>
+                )}
+                {activeItem.role === "history" && (
+                  <span className="store-avail store-avail--sold">found its home</span>
+                )}
+                {activeItem.role === "future" && (
+                  <span className="store-avail store-avail--soon">in progress</span>
+                )}
+                <p className="store-opo-detail-note">
+                  Interested in something similar? Reach out — each piece can be recreated on request.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function OneOfOneSection({ products }: { products: StoreProduct[] }) {
+  const groups = buildOpoGroups(products);
+  return <>{groups.map((g, i) => <OpoLineageBlock key={i} group={g} />)}</>;
+}
+
+// ─── Made to order ────────────────────────────────────────────────────────────
+
+function MadeToOrderEntry({ product, imageAlign }: { product: StoreProduct; imageAlign: "left" | "right" }) {
+  const { addItem } = useLaugicalCart();
+  const buyable = isBuyable(product.availability);
+
+  return (
+    <article className={`store-mto store-mto--${imageAlign}`}>
+      {product.placeholder && <PlaceholderChip />}
+      {product.images[0] ? (
+        <div className="store-mto-img-wrap glass-image-frame">
+          <img src={product.images[0]} alt={product.name} loading="lazy" decoding="async" />
+        </div>
+      ) : (
+        <div
+          className="store-mto-img-wrap"
+          style={{ aspectRatio: "4/3", background: "oklch(97% 0.002 255)", border: "0.5px solid rgba(0,0,0,0.06)" }}
+        />
+      )}
+
+      <div className="store-mto-details-row">
+        <h2 className="store-mto-name">{product.name}</h2>
+        {product.description && <p className="store-mto-desc">{product.description}</p>}
+        {product.material && <p className="store-mto-material">{product.material}</p>}
+        <span className="store-price">
+          <span className="store-price-currency">€</span>
+          {product.price.toFixed(2)}
+        </span>
+        <AvailLabel state={product.availability} />
         {buyable && (
           <motion.button
             className="store-cta"
@@ -81,62 +303,6 @@ function OneOfOneEntry({ product }: { product: StoreProduct }) {
   );
 }
 
-// ─── Made to order ────────────────────────────────────────────────────────────
-
-function MadeToOrderEntry({ product }: { product: StoreProduct }) {
-  const { addItem } = useLaugicalCart();
-  const buyable = isBuyable(product.availability);
-
-  return (
-    <article className="store-mto">
-      {product.images[0] ? (
-        <div className="store-mto-img-wrap glass-image-frame">
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-      ) : (
-        // Placeholder surface when no image — the desk waiting for the object
-        <div
-          className="store-mto-img-wrap"
-          style={{
-            aspectRatio: "1",
-            background: "oklch(97% 0.002 255)",
-            border: "0.5px solid rgba(0,0,0,0.06)",
-          }}
-        />
-      )}
-
-      <div className="store-mto-info">
-        <h2 className="store-mto-name">{product.name}</h2>
-        {product.description && <p className="store-mto-desc">{product.description}</p>}
-        {product.material && <p className="store-mto-material">{product.material}</p>}
-
-        <div className="store-mto-footer">
-          <span className="store-price">
-            <span className="store-price-currency">€</span>
-            {product.price.toFixed(2)}
-          </span>
-          <AvailLabel state={product.availability} />
-          {buyable && (
-            <motion.button
-              className="store-cta"
-              whileTap={{ scale: 0.96 }}
-              onClick={() => addItem(product)}
-              aria-label={`Add ${product.name} to bag`}
-            >
-              add to bag
-            </motion.button>
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
 // ─── Dropship / stickers ──────────────────────────────────────────────────────
 
 function DropshipEntry({ product }: { product: StoreProduct }) {
@@ -144,7 +310,8 @@ function DropshipEntry({ product }: { product: StoreProduct }) {
   const buyable = isBuyable(product.availability);
 
   return (
-    <article className="store-dsp">
+    <article className={`store-dsp${product.featured ? " store-dsp--featured" : ""}`}>
+      {product.placeholder && <PlaceholderChip />}
       {product.images[0] ? (
         <div className="store-dsp-img-wrap glass-image-frame">
           <img
@@ -203,13 +370,6 @@ function DropshipEntry({ product }: { product: StoreProduct }) {
   );
 }
 
-// ─── Product router ────────────────────────────────────────────────────────────
-
-function ProductEntry({ product }: { product: StoreProduct }) {
-  if (product.type === "one-of-one") return <OneOfOneEntry product={product} />;
-  if (product.type === "made-to-order") return <MadeToOrderEntry product={product} />;
-  return <DropshipEntry product={product} />;
-}
 
 // ─── Section definitions ───────────────────────────────────────────────────────
 
@@ -371,8 +531,12 @@ export default function StorePage() {
                         <DropshipEntry key={p.slug} product={p} />
                       ))}
                     </div>
+                  ) : s.key === "made-to-order" ? (
+                    products.map((p, i) => (
+                      <MadeToOrderEntry key={p.slug} product={p} imageAlign={i % 2 === 0 ? "left" : "right"} />
+                    ))
                   ) : (
-                    products.map((p) => <ProductEntry key={p.slug} product={p} />)
+                    <OneOfOneSection products={products} />
                   )}
                 </section>
               );

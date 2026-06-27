@@ -13,9 +13,14 @@ const TRACKS = {
     posKey: "audio-pos-home",
   },
   log: {
-    src:    "/mp3/Temporal Log.mp3",     // ← filename in /public/mp3/
-    title:  "Temporal Log — ATTA.CKORE", // ← shown in the top bar
+    src:    "/mp3/Temporal Log.mp3",
+    title:  "Temporal Log — ATTA.CKORE",
     posKey: "audio-pos-log",
+  },
+  catalogue: {
+    src:    "/mp3/CATTALOGUECAL.mp3",
+    title:  "CATTALOGUECAL — ATTA.CKORE",
+    posKey: "audio-pos-catalogue",
   },
 } as const;
 
@@ -80,12 +85,15 @@ export function useCkoreAudio() {
 export function CkoreAudioProvider({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
 
-  const homeAudioRef   = useRef<HTMLAudioElement>(null);
-  const logAudioRef    = useRef<HTMLAudioElement>(null);
-  const homeFadeRafRef = useRef<number>(0);
-  const logFadeRafRef  = useRef<number>(0);
-  const homeLoopEnd    = useRef<number>(Infinity);
-  const logLoopEnd   = useRef<number>(Infinity);
+  const homeAudioRef      = useRef<HTMLAudioElement>(null);
+  const logAudioRef       = useRef<HTMLAudioElement>(null);
+  const catalogueAudioRef = useRef<HTMLAudioElement>(null);
+  const homeFadeRafRef      = useRef<number>(0);
+  const logFadeRafRef       = useRef<number>(0);
+  const catalogueFadeRafRef = useRef<number>(0);
+  const homeLoopEnd      = useRef<number>(Infinity);
+  const logLoopEnd       = useRef<number>(Infinity);
+  const catalogueLoopEnd = useRef<number>(Infinity);
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const gainNodeRef  = useRef<GainNode | null>(null);
   const activeIdRef  = useRef<TrackId>("home");
@@ -107,9 +115,12 @@ export function CkoreAudioProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => { volumeRef.current = ckoreVolume; }, [ckoreVolume]);
   useEffect(() => { mutedRef.current  = ckoreMuted;  }, [ckoreMuted]);
 
-  const getAudioRef  = (id: TrackId) => id === "home" ? homeAudioRef    : logAudioRef;
-  const getFadeRef   = (id: TrackId) => id === "home" ? homeFadeRafRef  : logFadeRafRef;
-  const getLoopEnd   = (id: TrackId) => id === "home" ? homeLoopEnd     : logLoopEnd;
+  const getAudioRef = (id: TrackId) =>
+    id === "home" ? homeAudioRef : id === "log" ? logAudioRef : catalogueAudioRef;
+  const getFadeRef = (id: TrackId) =>
+    id === "home" ? homeFadeRafRef : id === "log" ? logFadeRafRef : catalogueFadeRafRef;
+  const getLoopEnd = (id: TrackId) =>
+    id === "home" ? homeLoopEnd : id === "log" ? logLoopEnd : catalogueLoopEnd;
 
   // ── per-track fade (independent RAF per track so crossfades don't cancel) ──
   const fadeTrack = useCallback((
@@ -145,7 +156,7 @@ export function CkoreAudioProvider({ children }: { children: React.ReactNode }) 
     const gain = ctx.createGain();
     gain.gain.value = MASTER_GAIN;
     gain.connect(ctx.destination);
-    [homeAudioRef.current, logAudioRef.current].forEach(el => {
+    [homeAudioRef.current, logAudioRef.current, catalogueAudioRef.current].forEach(el => {
       if (el) ctx.createMediaElementSource(el).connect(gain);
     });
     audioCtxRef.current = ctx;
@@ -227,10 +238,12 @@ export function CkoreAudioProvider({ children }: { children: React.ReactNode }) 
     <CkoreAudioContext.Provider value={{ triggerPlay, setActiveSong }}>
       {children}
 
-      <audio ref={homeAudioRef} src={TRACKS.home.src} preload="none"
+      <audio ref={homeAudioRef}      src={TRACKS.home.src}      preload="none"
         onTimeUpdate={makeLoopHandler("home")} />
-      <audio ref={logAudioRef}  src={TRACKS.log.src}  preload="none"
+      <audio ref={logAudioRef}       src={TRACKS.log.src}       preload="none"
         onTimeUpdate={makeLoopHandler("log")} />
+      <audio ref={catalogueAudioRef} src={TRACKS.catalogue.src} preload="none"
+        onTimeUpdate={makeLoopHandler("catalogue")} />
 
       {hideCursor && <style>{`* { cursor: none !important; }`}</style>}
 

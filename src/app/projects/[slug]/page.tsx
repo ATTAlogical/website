@@ -18,9 +18,9 @@ export default async function ProjectCatalogue({
   const hasImages = project.images && project.images.length > 0;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#f8f8f8", fontFamily: '"Playfair Display", serif', overflowX: "hidden" }}>
+    <main style={{ minHeight: "100vh", background: "#f8f8f8", fontFamily: '"Playfair Display", serif', overflowX: "hidden", paddingTop: "52px" }}>
       {/* Top bar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", background: "rgba(248,248,248,0.85)", borderBottom: "1px solid rgba(0,0,0,0.05)", padding: "1.2rem 8vw", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 10, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", background: "rgba(248,248,248,0.85)", borderBottom: "1px solid rgba(0,0,0,0.05)", padding: "1.2rem 8vw 1.2rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" className="catalogue-back-link" style={{ fontSize: "0.62rem", letterSpacing: "0.14em", textDecoration: "none", textTransform: "uppercase" }}>
           ← ATTA logical
         </Link>
